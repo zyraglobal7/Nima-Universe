@@ -1,0 +1,301 @@
+'use client';
+
+import { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
+import { Authenticated, Unauthenticated, useQuery } from 'convex/react';
+import { GateSplash, OnboardingWizard } from '@/components/onboarding';
+import { useOnboardingCompletion } from '@/lib/hooks/useOnboardingCompletion';
+import { useAuth } from '@workos-inc/authkit-nextjs/components';
+import { api } from '@/convex/_generated/api';
+import { Loader2 } from 'lucide-react';
+
+type View = 'gate' | 'onboarding' | 'app';
+
+
+function InstallPrompt() {
+  const [isIOS, setIsIOS] = useState(false)
+  const [isStandalone, setIsStandalone] = useState(false)
+  const [isMobile, setIsMobile] = useState(false) // Added this state
+ 
+  useEffect(() => {
+    const userAgent = navigator.userAgent;
+    const isApple = /iPad|iPhone|iPod/.test(userAgent);
+    const isAndroid = /Android/.test(userAgent);
+    
+    setIsIOS(isApple);
+    setIsMobile(isApple || isAndroid); // Detects any mobile device
+    setIsStandalone(window.matchMedia('(display-mode: standalone)').matches);
+  }, [])
+ 
+  // 1. Don't show if already installed
+  // 2. Don't show if we're on a Desktop (unless you want a desktop button too)
+  if (isStandalone || !isIOS || !isMobile) {
+    return null
+  }
+
+  return (
+    <div className="fixed bottom-4 left-1/2 transform -translate-x-1/2 z-40 w-[min(96%,560px)] bg-surface border border-border rounded-xl p-3 shadow-md flex items-center gap-4">
+      <div className="flex items-center gap-3">
+        <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-primary to-secondary flex items-center justify-center text-white font-semibold">N</div>
+        <div>
+          <h3 className="text-sm font-medium text-foreground">Install App</h3>
+      
+            <p className="mt-1 text-xs text-muted-foreground">Tap the share button and choose <strong>Add to Home Screen</strong>.</p>
+          
+        </div>
+      </div>
+
+    
+    </div>
+  )
+}
+ 
+
+
+export default function Home() {
+  const [view, setView] = useState<View>('gate');
+  const [isMounted, setIsMounted] = useState(false);
+
+  useEffect(() => {
+    setIsMounted(true);
+  }, []);
+
+  const handleGetStarted = () => {
+    setView('onboarding');
+  };
+
+  const handleBackToGate = () => {
+    setView('gate');
+  };
+
+  const handleOnboardingComplete = () => {
+    // This will redirect to auth via the AccountStep
+    // After auth, the user will be redirected back and
+    // the AuthenticatedContent component will handle the rest
+    setView('app');
+  };
+
+  // Show loading during SSR/initial hydration before AuthKitProvider is mounted
+  if (!isMounted) {
+    return (
+      <div className="min-h-screen flex flex-col items-center justify-center px-6 py-12">
+        <div className="max-w-md text-center space-y-6">
+          <Loader2 className="w-12 h-12 mx-auto text-primary animate-spin" />
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <>
+      <Authenticated>
+        <AuthenticatedContent />
+      </Authenticated>
+      <Unauthenticated>
+        {view === 'gate' && <GateSplash onGetStarted={handleGetStarted} />}
+        {view === 'onboarding' && (
+          <OnboardingWizard onComplete={handleOnboardingComplete} onBack={handleBackToGate} />
+        )}
+        {view === 'app' && <OnboardingCompletePlaceholder />}
+      </Unauthenticated>
+          {/* <InstallPrompt /> */}
+    </>
+  );
+}
+
+/**
+ * Content shown to authenticated users
+ * Handles onboarding completion and redirects to main feed
+ */
+function AuthenticatedContent() {
+  // Get WorkOS user and pass to hook (useAuth is safe here since we're after mount check)
+  const { user: workosUser } = useAuth();
+  const { user, isProcessing, error, needsOnboarding, onboardingState } = useOnboardingCompletion(workosUser);
+
+  console.log('[HOME_PAGE] AuthenticatedContent rendered', {
+    workosUser: workosUser ? { id: workosUser.id, email: workosUser.email } : null,
+    user: user === undefined ? 'undefined' : user === null ? 'null' : 'exists',
+    isProcessing,
+    error,
+    needsOnboarding,
+    onboardingState,
+  });
+
+  // Show loading while:
+  // - queries are still loading (undefined)
+  // - onboarding hook is processing localStorage data
+  // - user is null (Convex record not yet created — getOrCreateUser is still running)
+  if (isProcessing || user === undefined || user === null || onboardingState === undefined) {
+    return (
+      <div className="min-h-screen flex flex-col items-center justify-center px-6 py-12">
+        <div className="max-w-md text-center space-y-6">
+          <Loader2 className="w-12 h-12 mx-auto text-primary animate-spin" />
+          <p className="text-muted-foreground">Setting up your profile...</p>
+        </div>
+      </div>
+    );
+  }
+
+  // Show error if onboarding failed
+  if (error) {
+    return (
+      <div className="min-h-screen flex flex-col items-center justify-center px-6 py-12">
+        <div className="max-w-md text-center space-y-6">
+          <div className="w-20 h-20 mx-auto rounded-full bg-red-100 dark:bg-red-900/20 flex items-center justify-center">
+            <span className="text-3xl">😕</span>
+          </div>
+          <h1 className="text-2xl font-serif font-semibold text-foreground">
+            Something went wrong
+          </h1>
+          <p className="text-muted-foreground">{error}</p>
+          <button
+            onClick={() => window.location.reload()}
+            className="px-6 py-3 bg-primary text-primary-foreground rounded-full hover:bg-primary-hover transition-colors"
+          >
+            Try Again
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  // If user needs onboarding (signed up but didn't complete onboarding flow)
+  if (needsOnboarding) {
+    return <NeedsOnboardingPrompt onboardingState={onboardingState} />;
+  }
+
+  // Main feed for authenticated users with completed onboarding
+  return <MainFeedPlaceholder />;
+}
+
+/**
+ * Prompt shown when user is authenticated but hasn't completed onboarding
+ * Shows context-aware messaging based on what's missing
+ */
+interface OnboardingState {
+  isAuthenticated: boolean;
+  hasUser: boolean;
+  hasProfileData: boolean;
+  hasImages: boolean;
+  imageCount: number;
+  onboardingCompleted: boolean;
+  missingFields: string[];
+}
+
+function NeedsOnboardingPrompt({ onboardingState }: { onboardingState: OnboardingState }) {
+  // Determine what user is missing
+  const hasProfile = onboardingState.hasProfileData;
+  const hasImages = onboardingState.hasImages;
+  
+  // Context-aware messaging
+  let emoji = '👋';
+  let title = 'Welcome to Nima!';
+  let message = "Let's set up your style profile so I can show you outfits you'll love.";
+  let buttonText = 'Get Started';
+  
+  if (hasImages && !hasProfile) {
+    // Has images but missing profile
+    emoji = '✨';
+    title = "Let's finish your profile!";
+    message = "Your photos are ready. Just add your style preferences and we'll create personalized looks for you.";
+    buttonText = 'Complete Profile';
+  } else if (hasProfile && !hasImages) {
+    // Has profile but missing images
+    emoji = '📸';
+    title = 'Add your photos';
+    message = "Your style preferences are saved. Add some photos so I can show you wearing the outfits!";
+    buttonText = 'Upload Photos';
+  } else if (!hasProfile && !hasImages) {
+    // Missing both - default messaging
+    emoji = '👋';
+    title = 'Welcome to Nima!';
+    message = "Let's set up your style profile so I can show you outfits you'll love.";
+    buttonText = 'Get Started';
+  }
+  
+  return (
+    <div className="min-h-screen flex flex-col items-center justify-center px-6 py-12">
+      <div className="max-w-md text-center space-y-6">
+        <div className="w-20 h-20 mx-auto rounded-full bg-gradient-to-br from-primary to-secondary flex items-center justify-center">
+          <span className="text-3xl">{emoji}</span>
+        </div>
+        <h1 className="text-3xl font-serif font-semibold text-foreground">
+          {title}
+        </h1>
+        <p className="text-muted-foreground">
+          {message}
+        </p>
+        
+        {/* Show progress indicator */}
+        <div className="flex justify-center gap-2">
+          <div className={`w-3 h-3 rounded-full ${hasProfile ? 'bg-green-500' : 'bg-border'}`} 
+               title={hasProfile ? 'Profile complete' : 'Profile incomplete'} />
+          <div className={`w-3 h-3 rounded-full ${hasImages ? 'bg-green-500' : 'bg-border'}`}
+               title={hasImages ? 'Photos uploaded' : 'Photos needed'} />
+        </div>
+        
+        <a
+          href="/onboarding"
+          className="inline-block px-6 py-3 bg-primary text-primary-foreground rounded-full hover:bg-primary-hover transition-colors"
+        >
+          {buttonText}
+        </a>
+      </div>
+    </div>
+  );
+}
+
+/**
+ * Redirect authenticated users with completed onboarding to /discover
+ */
+function MainFeedPlaceholder() {
+  const router = useRouter();
+
+  useEffect(() => {
+    // Redirect to discover page for authenticated users
+    router.replace('/discover');
+  }, [router]);
+
+  // Show brief loading while redirecting
+  return (
+    <div className="min-h-screen flex flex-col items-center justify-center px-6 py-12">
+      <div className="max-w-md text-center space-y-6">
+        <Loader2 className="w-12 h-12 mx-auto text-primary animate-spin" />
+        <p className="text-muted-foreground">Taking you to your feed...</p>
+      </div>
+    </div>
+  );
+}
+
+/**
+ * Placeholder after completing onboarding - redirects to sign-up
+ */
+function OnboardingCompletePlaceholder() {
+  return (
+    <div className="min-h-screen flex flex-col items-center justify-center px-6 py-12">
+      <div className="max-w-md text-center space-y-6">
+        <div className="w-20 h-20 mx-auto rounded-full bg-gradient-to-br from-primary to-secondary flex items-center justify-center">
+          <span className="text-3xl">🎉</span>
+        </div>
+        <h1 className="text-3xl font-serif font-semibold text-foreground">You&apos;re all set!</h1>
+        <p className="text-muted-foreground">
+          Your style profile has been created. The main feed experience is coming soon!
+        </p>
+        <div className="flex flex-col gap-3">
+          <a
+            href="/sign-up"
+            className="inline-block px-6 py-3 bg-primary text-primary-foreground rounded-full hover:bg-primary-hover transition-colors"
+          >
+            Complete Sign Up
+          </a>
+          <button
+            onClick={() => window.location.reload()}
+            className="text-sm text-muted-foreground hover:text-foreground transition-colors"
+          >
+            Start over
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}

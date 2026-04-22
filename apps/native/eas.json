@@ -1,0 +1,38 @@
+{
+  "cli": {
+    "version": ">= 16.28.0",
+    "appVersionSource": "remote"
+  },
+  "build": {
+    "development": {
+      "developmentClient": true,
+      "distribution": "internal",
+      "env": {
+        "EXPO_PUBLIC_CONVEX_URL": "https://rare-guineapig-47.convex.cloud",
+        "EXPO_PUBLIC_WORKOS_CLIENT_ID": "client_01KC47243D8SCBY79ZKEPH18EX",
+        "EXPO_PUBLIC_WORKOS_REDIRECT_URI": "shopnima://callback"
+      }
+    },
+    "preview": {
+      "extends": "production",
+      "distribution": "internal",
+      "android": {
+        "buildType": "apk",
+        "gradleCommand": ":app:assembleRelease"
+      }
+    },
+    "production": {
+      "autoIncrement": true,
+      "env": {
+        "EXPO_PUBLIC_CONVEX_URL": "https://rare-guineapig-47.convex.cloud",
+        "EXPO_PUBLIC_WORKOS_CLIENT_ID": "client_01KC47243D8SCBY79ZKEPH18EX",
+        "EXPO_PUBLIC_WORKOS_REDIRECT_URI": "shopnima://callback"
+      },
+      "android": {
+        "env": {
+          "GOOGLE_SERVICES_JSON": "./google-services.json"
+        }
+      }
+    }
+  }
+}

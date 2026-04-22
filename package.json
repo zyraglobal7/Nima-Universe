@@ -1,0 +1,17 @@
+{
+  "name": "nima-universe",
+  "private": true,
+  "workspaces": [
+    "apps/web",
+    "apps/native",
+    "packages/backend"
+  ],
+  "scripts": {
+    "dev:web": "npm run dev --workspace=apps/web",
+    "dev:native": "npm run start --workspace=apps/native",
+    "dev:backend": "npm run dev --workspace=packages/backend",
+    "deploy:backend": "npm run deploy --workspace=packages/backend"
+  }
+}
+
+

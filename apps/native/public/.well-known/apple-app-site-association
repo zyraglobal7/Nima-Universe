@@ -1,0 +1,12 @@
+{
+  "applinks": {
+    "apps": [],
+    "details": [
+      {
+        "appIDs": ["<TEAM_ID>.com.nima.app"],
+        "paths": ["/look/*", "/product/*", "/lookbook/*"]
+      }
+    ]
+  }
+}
+

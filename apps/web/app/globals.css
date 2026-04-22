@@ -1,0 +1,451 @@
+@import 'tailwindcss';
+@import 'tw-animate-css';
+
+@custom-variant dark (&:is(.dark *));
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --font-sans: var(--font-sans);
+  --font-serif: var(--font-serif);
+  --font-mono: var(--font-mono);
+  --color-surface: var(--surface);
+  --color-surface-alt: var(--surface-alt);
+  --color-sidebar-ring: var(--sidebar-ring);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar: var(--sidebar);
+  --color-chart-5: var(--chart-5);
+  --color-chart-4: var(--chart-4);
+  --color-chart-3: var(--chart-3);
+  --color-chart-2: var(--chart-2);
+  --color-chart-1: var(--chart-1);
+  --color-ring: var(--ring);
+  --color-input: var(--input);
+  --color-border: var(--border);
+  --color-destructive: var(--destructive);
+  --color-success: var(--success);
+  --color-warning: var(--warning);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-accent: var(--accent);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-muted: var(--muted);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-secondary: var(--secondary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-primary: var(--primary);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-popover: var(--popover);
+  --color-card-foreground: var(--card-foreground);
+  --color-card: var(--card);
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+}
+
+/* ============================================
+   NIMA AI - Loro Piana Inspired Color System
+   ============================================ */
+
+:root {
+  /* Border Radius */
+  --radius: 0.5rem;
+
+  /* Light Mode - Loro Piana Quiet Luxury */
+
+  /* Backgrounds */
+  --background: #faf8f5; /* Ivory Cream - Main page */
+  --surface: #f5f0e8; /* Soft Champagne - Cards, modals */
+  --surface-alt: #ede6dc; /* Warm Linen - Secondary surfaces */
+
+  /* Primary - Nima Burgundy */
+  --primary: #5c2a33;
+  --primary-hover: #44242d;
+  --primary-foreground: #faf8f5;
+
+  /* Secondary - Camel Brown */
+  --secondary: #a67c52;
+  --secondary-hover: #8c6a50;
+  --secondary-foreground: #faf8f5;
+
+  /* Text Colors */
+  --foreground: #2d2926; /* Charcoal - Headlines, body */
+  --muted: #f5f0e8;
+  --muted-foreground: #6b635b; /* Warm Gray - Captions */
+  --text-muted: #9c948a; /* Stone - Placeholders */
+
+  /* UI Elements */
+  --card: #f5f0e8;
+  --card-foreground: #2d2926;
+  --popover: #f5f0e8;
+  --popover-foreground: #2d2926;
+  --border: #e0d8cc; /* Sand */
+  --input: #e0d8cc;
+  --ring: #5c2a33;
+
+  /* Accent */
+  --accent: #f5f0e8;
+  --accent-foreground: #5c2a33;
+
+  /* Status Colors */
+  --success: #6b7f5e; /* Sage */
+  --destructive: #b85c5c; /* Dusty Rose */
+  --warning: #c4a35a;
+
+  /* Charts */
+  --chart-1: #5c2a33;
+  --chart-2: #a67c52;
+  --chart-3: #6b7f5e;
+  --chart-4: #c4a35a;
+  --chart-5: #8c6a50;
+
+  /* Sidebar */
+  --sidebar: #f5f0e8;
+  --sidebar-foreground: #2d2926;
+  --sidebar-primary: #5c2a33;
+  --sidebar-primary-foreground: #faf8f5;
+  --sidebar-accent: #ede6dc;
+  --sidebar-accent-foreground: #2d2926;
+  --sidebar-border: #e0d8cc;
+  --sidebar-ring: #5c2a33;
+}
+
+.dark {
+  /* Dark Mode - Deep Espresso Luxury */
+
+  /* Backgrounds */
+  --background: #1a1614; /* Deep Espresso - Warm black */
+  --surface: #252220; /* Dark Cocoa - Cards */
+  --surface-alt: #302b28; /* Coffee - Secondary */
+
+  /* Primary - Rose Gold (inverted warmth) */
+  --primary: #c9a07a;
+  --primary-hover: #d4b896;
+  --primary-foreground: #1a1614;
+
+  /* Secondary - Soft Burgundy */
+  --secondary: #a66b73;
+  --secondary-hover: #b8828a;
+  --secondary-foreground: #1a1614;
+
+  /* Text Colors */
+  --foreground: #f5f0e8; /* Warm White */
+  --muted: #302b28;
+  --muted-foreground: #c4b8a8; /* Sand */
+  --text-muted: #8c8078; /* Warm Gray */
+
+  /* UI Elements */
+  --card: #252220;
+  --card-foreground: #f5f0e8;
+  --popover: #252220;
+  --popover-foreground: #f5f0e8;
+  --border: #3d3835; /* Dark Sand */
+  --input: #3d3835;
+  --ring: #c9a07a;
+
+  /* Accent */
+  --accent: #302b28;
+  --accent-foreground: #c9a07a;
+
+  /* Status Colors */
+  --success: #8fa881; /* Soft Sage */
+  --destructive: #d4807a; /* Warm Coral */
+  --warning: #d4c078;
+
+  /* Charts */
+  --chart-1: #c9a07a;
+  --chart-2: #a66b73;
+  --chart-3: #8fa881;
+  --chart-4: #d4c078;
+  --chart-5: #b8828a;
+
+  /* Sidebar */
+  --sidebar: #252220;
+  --sidebar-foreground: #f5f0e8;
+  --sidebar-primary: #c9a07a;
+  --sidebar-primary-foreground: #1a1614;
+  --sidebar-accent: #302b28;
+  --sidebar-accent-foreground: #f5f0e8;
+  --sidebar-border: #3d3835;
+  --sidebar-ring: #c9a07a;
+}
+
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+  body {
+    @apply bg-background text-foreground antialiased;
+    font-family: var(--font-sans);
+  }
+  h1,
+  h2,
+  h3,
+  h4,
+  h5,
+  h6 {
+    font-family: var(--font-serif);
+  }
+}
+
+/* Custom utility classes for Nima */
+@layer utilities {
+  .text-gradient {
+    @apply bg-gradient-to-r from-primary to-secondary bg-clip-text text-transparent;
+  }
+
+  .surface-card {
+    @apply bg-surface border border-border;
+  }
+
+  .surface-alt-card {
+    @apply bg-surface-alt border border-border;
+  }
+
+  /* Hide scrollbar while allowing scroll */
+  .scrollbar-hide {
+    -ms-overflow-style: none; /* IE and Edge */
+    scrollbar-width: none; /* Firefox */
+  }
+  .scrollbar-hide::-webkit-scrollbar {
+    display: none; /* Chrome, Safari, Opera */
+  }
+}
+
+/* Custom animations for Nima */
+@layer utilities {
+  /* Smooth hover lift effect */
+  .hover-lift {
+    @apply transition-all duration-300 ease-out;
+  }
+  .hover-lift:hover {
+    @apply -translate-y-1 shadow-lg;
+  }
+
+  /* Pulse glow effect */
+  .pulse-glow {
+    animation: pulse-glow 2s ease-in-out infinite;
+  }
+
+  /* Stagger animation delays */
+  .stagger-1 {
+    animation-delay: 100ms;
+  }
+  .stagger-2 {
+    animation-delay: 200ms;
+  }
+  .stagger-3 {
+    animation-delay: 300ms;
+  }
+  .stagger-4 {
+    animation-delay: 400ms;
+  }
+  .stagger-5 {
+    animation-delay: 500ms;
+  }
+}
+
+@keyframes pulse-glow {
+  0%,
+  100% {
+    box-shadow: 0 0 0 0 rgba(92, 42, 51, 0.2);
+  }
+  50% {
+    box-shadow: 0 0 20px 10px rgba(92, 42, 51, 0.1);
+  }
+}
+
+/* Rising Sun Gradient Animation */
+@keyframes rising-sun {
+  0% {
+    background-position: 50% 100%;
+    opacity: 0.3;
+  }
+  50% {
+    background-position: 50% 50%;
+    opacity: 0.6;
+  }
+  100% {
+    background-position: 50% 0%;
+    opacity: 0.4;
+  }
+}
+
+.animate-rising-sun {
+  animation: rising-sun 8s ease-in-out infinite alternate;
+  background-size: 200% 200%;
+}
+
+/* Chat bubble float animation */
+@keyframes float {
+  0%,
+  100% {
+    transform: translateY(0px);
+  }
+  50% {
+    transform: translateY(-8px);
+  }
+}
+
+.animate-float {
+  animation: float 4s ease-in-out infinite;
+}
+
+/* Typing cursor blink */
+@keyframes blink {
+  0%,
+  50% {
+    opacity: 1;
+  }
+  51%,
+  100% {
+    opacity: 0;
+  }
+}
+
+.animate-blink {
+  animation: blink 1s step-end infinite;
+}
+
+/* Chat bubble pop in */
+@keyframes pop-in {
+  0% {
+    transform: scale(0.8) translateY(10px);
+    opacity: 0;
+  }
+  100% {
+    transform: scale(1) translateY(0);
+    opacity: 1;
+  }
+}
+
+.animate-pop-in {
+  animation: pop-in 0.4s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+}
+
+/* Slider track fill animation */
+@keyframes slider-fill {
+  0% {
+    transform: scaleX(0);
+  }
+  100% {
+    transform: scaleX(1);
+  }
+}
+
+.animate-slider-fill {
+  animation: slider-fill 0.3s ease-out forwards;
+  transform-origin: left;
+}
+
+/* Subtle shimmer effect */
+@keyframes shimmer {
+  0% {
+    background-position: -200% 0;
+  }
+  100% {
+    background-position: 200% 0;
+  }
+}
+
+.animate-shimmer {
+  background: linear-gradient(90deg, transparent 0%, rgba(255, 255, 255, 0.1) 50%, transparent 100%);
+  background-size: 200% 100%;
+  animation: shimmer 3s infinite;
+}
+
+/* AI Thinking Loader — sweeping progress bar */
+@keyframes loading-bar {
+  0% {
+    width: 0%;
+    margin-left: 0%;
+  }
+  40% {
+    width: 60%;
+    margin-left: 0%;
+  }
+  60% {
+    width: 40%;
+    margin-left: 60%;
+  }
+  100% {
+    width: 0%;
+    margin-left: 100%;
+  }
+}
+
+/* AI Streaming — blinking cursor */
+@keyframes cursor-blink {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0;
+  }
+}
+
+/* AI Streaming — word-by-word fade + lift */
+@keyframes word-fade-in {
+  from {
+    opacity: 0;
+    transform: translateY(3px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* AI Streaming — inline blinking cursor appended to live text */
+.streaming-text {
+  position: relative;
+}
+
+.streaming-cursor {
+  display: inline-block;
+  width: 2px;
+  height: 1em;
+  background-color: currentColor;
+  opacity: 0.7;
+  margin-left: 1px;
+  vertical-align: text-bottom;
+  border-radius: 1px;
+  animation: cursor-blink 0.8s step-end infinite;
+}
+
+/* Smooth scroll behavior */
+html {
+  scroll-behavior: smooth;
+}
+
+/* Custom scrollbar styling */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: var(--surface);
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--border);
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--muted-foreground);
+}
+
+/* Selection styling */
+::selection {
+  background: var(--primary);
+  color: var(--primary-foreground);
+}

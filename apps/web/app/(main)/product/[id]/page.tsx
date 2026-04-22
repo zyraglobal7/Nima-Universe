@@ -1,0 +1,639 @@
+'use client';
+
+import { useState, useCallback, useEffect, useRef } from 'react';
+import { useParams } from 'next/navigation';
+import { motion, AnimatePresence } from 'framer-motion';
+import {
+  Heart,
+  Share2,
+  ExternalLink,
+  ChevronLeft,
+  ChevronRight,
+  Sparkles,
+  Loader2,
+  Check,
+  AlertCircle,
+  ShoppingBag,
+  ShoppingCart,
+  Bookmark,
+  BookmarkCheck,
+} from 'lucide-react';
+import Image from 'next/image';
+import Link from 'next/link';
+import { useQuery, useMutation } from 'convex/react';
+import { api } from '@/convex/_generated/api';
+import type { Id } from '@/convex/_generated/dataModel';
+import { formatPrice } from '@/lib/utils/format';
+import { toast } from 'sonner';
+
+type TryOnStatus = 'idle' | 'starting' | 'pending' | 'processing' | 'completed' | 'failed';
+
+export default function ProductDetailPage() {
+  const params = useParams();
+  const itemId = params.id as Id<'items'>;
+
+  const [currentImageIndex, setCurrentImageIndex] = useState(0);
+  const [isLiked, setIsLiked] = useState(false);
+  const [tryOnStatus, setTryOnStatus] = useState<TryOnStatus>('idle');
+  const [tryOnId, setTryOnId] = useState<Id<'item_try_ons'> | null>(null);
+  const [showTryOnResult, setShowTryOnResult] = useState(false);
+  const [isAddingToCart, setIsAddingToCart] = useState(false);
+  const [addedToCart, setAddedToCart] = useState(false);
+  const [isSavingTryOn, setIsSavingTryOn] = useState(false);
+
+  // Variant selection state
+  const [selectedSize, setSelectedSize] = useState<string | null>(null);
+  const [selectedColor, setSelectedColor] = useState<string | null>(null);
+  const [highlightVariants, setHighlightVariants] = useState<'color' | 'size' | null>(null);
+  const variantSectionRef = useRef<HTMLDivElement>(null);
+
+  // Queries
+  const itemData = useQuery(api.items.queries.getItemWithImage, { itemId });
+  const itemImages = useQuery(api.items.queries.getItemImages, { itemId });
+  const existingTryOn = useQuery(api.itemTryOns.queries.getItemTryOnForUser, { itemId });
+
+  // Mutations
+  const startTryOn = useMutation(api.workflows.index.startItemTryOn);
+  const quickSave = useMutation(api.lookbooks.mutations.quickSave);
+  const saveTryOn = useMutation(api.lookbooks.mutations.saveTryOnToLookbook);
+  const addToCart = useMutation(api.cart.mutations.addToCart);
+  const incrementView = useMutation(api.items.mutations.incrementItemView);
+
+  // Poll for try-on status if we have a tryOnId
+  const tryOnResult = useQuery(
+    api.itemTryOns.queries.getItemTryOnWithDetails,
+    tryOnId ? { itemTryOnId: tryOnId } : 'skip',
+  );
+
+  // Check if this try-on is already saved
+  const isSaved = useQuery(api.lookbooks.queries.isTryOnSaved, tryOnId ? { itemTryOnId: tryOnId } : 'skip');
+
+  // Track view once when item data first loads
+  useEffect(() => {
+    if (itemData) {
+      incrementView({ itemId }).catch(() => {});
+    }
+    // itemId is stable for the lifetime of this page
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [!!itemData]);
+
+  // Check for existing completed try-on
+  useEffect(() => {
+    if (existingTryOn?.tryOn.status === 'completed' && existingTryOn.imageUrl) {
+      setTryOnId(existingTryOn.tryOn._id);
+      setTryOnStatus('completed');
+    } else if (existingTryOn?.tryOn.status === 'pending' || existingTryOn?.tryOn.status === 'processing') {
+      setTryOnId(existingTryOn.tryOn._id);
+      setTryOnStatus(existingTryOn.tryOn.status);
+    }
+  }, [existingTryOn]);
+
+  // Auto-select color/size if there is only one option
+  useEffect(() => {
+    if (!itemData) return;
+    const { item } = itemData;
+    if (item.colors.length === 1) {
+      setSelectedColor(item.colors[0]);
+    }
+    if (item.sizes.length === 1) {
+      setSelectedSize(item.sizes[0]);
+    }
+  }, [itemData]);
+
+  // Watch for try-on completion
+  useEffect(() => {
+    if (tryOnResult?.tryOn.status === 'completed' && tryOnResult.imageUrl) {
+      setTryOnStatus('completed');
+      setShowTryOnResult(true);
+    } else if (tryOnResult?.tryOn.status === 'failed') {
+      setTryOnStatus('failed');
+      toast.error(tryOnResult.tryOn.errorMessage || 'Try-on generation failed');
+    } else if (tryOnResult?.tryOn.status === 'processing') {
+      setTryOnStatus('processing');
+    } else if (tryOnResult?.tryOn.status === 'pending') {
+      setTryOnStatus('pending');
+    }
+  }, [tryOnResult]);
+
+  const images = itemImages?.filter((img) => img.url) || [];
+  const hasMultipleImages = images.length > 1;
+
+  const handlePrevImage = useCallback(() => {
+    setCurrentImageIndex((prev) => (prev === 0 ? images.length - 1 : prev - 1));
+  }, [images.length]);
+
+  const handleNextImage = useCallback(() => {
+    setCurrentImageIndex((prev) => (prev === images.length - 1 ? 0 : prev + 1));
+  }, [images.length]);
+
+  const handleTryOn = async () => {
+    if (tryOnStatus === 'completed') {
+      setShowTryOnResult(true);
+      return;
+    }
+
+    if (tryOnStatus === 'starting' || tryOnStatus === 'pending' || tryOnStatus === 'processing') {
+      return;
+    }
+
+    if (item.colors.length > 0 && !selectedColor) {
+      toast.error('Please select a color first');
+      setHighlightVariants('color');
+      variantSectionRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      setTimeout(() => setHighlightVariants(null), 2000);
+      return;
+    }
+
+    if (item.sizes.length > 0 && !selectedSize) {
+      toast.error('Please select a size first');
+      setHighlightVariants('size');
+      variantSectionRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      setTimeout(() => setHighlightVariants(null), 2000);
+      return;
+    }
+
+    setTryOnStatus('starting');
+
+    try {
+      const result = await startTryOn({
+        itemId,
+        selectedSize: selectedSize || undefined,
+        selectedColor: selectedColor || undefined,
+      });
+
+      if (result.success && result.tryOnId) {
+        setTryOnId(result.tryOnId);
+        setTryOnStatus('pending');
+        toast.success('Generating your try-on...');
+      } else {
+        setTryOnStatus('failed');
+        toast.error(result.error || 'Failed to start try-on');
+      }
+    } catch (error) {
+      setTryOnStatus('failed');
+      toast.error(error instanceof Error ? error.message : 'Something went wrong');
+    }
+  };
+
+  const handleFavorite = async () => {
+    try {
+      await quickSave({
+        itemId,
+        itemType: 'item',
+      });
+      setIsLiked(true);
+      toast.success('Added to favorites!');
+    } catch (error) {
+      toast.error('Failed to save');
+    }
+  };
+
+  const handleShare = async () => {
+    if (navigator.share) {
+      try {
+        await navigator.share({
+          title: itemData?.item.name || 'Check out this item',
+          url: window.location.href,
+        });
+      } catch (error) {
+        // User cancelled share
+      }
+    } else {
+      await navigator.clipboard.writeText(window.location.href);
+      toast.success('Link copied to clipboard!');
+    }
+  };
+
+  const handleAddToCart = async () => {
+    if (addedToCart) return; // Already added
+
+    setIsAddingToCart(true);
+    try {
+      const result = await addToCart({ itemId });
+      if (result.success) {
+        setAddedToCart(true);
+        toast.success('Added to cart!');
+        setShowTryOnResult(false);
+        // Reset the "added" state after 3 seconds so user can add again
+        setTimeout(() => setAddedToCart(false), 3000);
+      } else {
+        toast.error(result.message || 'Failed to add to cart');
+      }
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : 'Failed to add to cart');
+    } finally {
+      setIsAddingToCart(false);
+    }
+  };
+
+  const handleSaveTryOn = async () => {
+    if (!tryOnId) return;
+    setIsSavingTryOn(true);
+    try {
+      const result = await saveTryOn({ itemTryOnId: tryOnId });
+      if (result.success) {
+        toast.success(result.message);
+      } else {
+        toast.error('Failed to save to lookbook');
+      }
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : 'Failed to save');
+    } finally {
+      setIsSavingTryOn(false);
+    }
+  };
+
+  if (!itemData) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <Loader2 className="w-8 h-8 text-primary animate-spin" />
+      </div>
+    );
+  }
+
+  const { item } = itemData;
+  const currentImage = images[currentImageIndex]?.url || itemData.imageUrl;
+
+  return (
+    <div className="min-h-screen bg-background pb-32">
+      {/* Header removed - replaced by global Navigation */}
+
+      <main className="max-w-2xl mx-auto relative">
+        {/* Share button - floating top right */}
+        <button
+          onClick={handleShare}
+          className="absolute top-4 right-4 z-10 p-3 rounded-full bg-background/80 backdrop-blur-md border border-border shadow-sm hover:bg-background transition-colors"
+        >
+          <Share2 className="w-5 h-5 text-foreground" />
+        </button>
+
+        {/* Image Carousel */}
+        <div className="relative aspect-[3/4] bg-surface">
+          <AnimatePresence mode="wait">
+            {currentImage && (
+              <motion.div
+                key={currentImageIndex}
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                transition={{ duration: 0.2 }}
+                className="absolute inset-0"
+              >
+                <Image
+                  src={currentImage}
+                  alt={item.name}
+                  fill
+                  priority
+                  unoptimized={currentImage.includes('convex.cloud') || currentImage.includes('convex.site')}
+                  className="object-cover"
+                />
+              </motion.div>
+            )}
+          </AnimatePresence>
+
+          {/* Carousel controls */}
+          {hasMultipleImages && (
+            <>
+              <button
+                onClick={handlePrevImage}
+                className="absolute left-3 top-1/2 -translate-y-1/2 p-2 bg-background/80 backdrop-blur-sm rounded-full border border-border shadow-lg hover:bg-background transition-colors"
+              >
+                <ChevronLeft className="w-5 h-5 text-foreground" />
+              </button>
+              <button
+                onClick={handleNextImage}
+                className="absolute right-3 top-1/2 -translate-y-1/2 p-2 bg-background/80 backdrop-blur-sm rounded-full border border-border shadow-lg hover:bg-background transition-colors"
+              >
+                <ChevronRight className="w-5 h-5 text-foreground" />
+              </button>
+
+              {/* Image indicators */}
+              <div className="absolute bottom-4 left-1/2 -translate-x-1/2 flex gap-1.5">
+                {images.map((_, index) => (
+                  <button
+                    key={index}
+                    onClick={() => setCurrentImageIndex(index)}
+                    className={`w-2 h-2 rounded-full transition-all ${
+                      index === currentImageIndex ? 'bg-primary w-4' : 'bg-foreground/30 hover:bg-foreground/50'
+                    }`}
+                  />
+                ))}
+              </div>
+            </>
+          )}
+        </div>
+
+        {/* Product Info */}
+        <div className="px-4 py-6 space-y-6">
+          {/* Brand & Name */}
+          <div>
+            {item.brand && (
+              <p className="text-sm font-medium text-muted-foreground uppercase tracking-wider mb-1">{item.brand}</p>
+            )}
+            <h1 className="text-2xl font-semibold text-foreground">{item.name}</h1>
+          </div>
+
+          {/* Price */}
+          <div className="flex items-baseline gap-3">
+            <span className="text-2xl font-bold text-foreground">{formatPrice(item.price, item.currency)}</span>
+            {item.originalPrice && item.originalPrice > item.price && (
+              <>
+                <span className="text-lg text-muted-foreground line-through">
+                  {formatPrice(item.originalPrice, item.currency)}
+                </span>
+                <span className="px-2 py-0.5 bg-destructive/10 text-destructive text-sm font-medium rounded-full">
+                  {Math.round((1 - item.price / item.originalPrice) * 100)}% OFF
+                </span>
+              </>
+            )}
+          </div>
+
+          {/* Description */}
+          {item.description && <p className="text-muted-foreground leading-relaxed">{item.description}</p>}
+
+          {/* Colors & Sizes */}
+          <div ref={variantSectionRef}>
+            {item.colors.length > 0 && (
+              <div className={`rounded-xl p-3 -mx-3 transition-all duration-500 ${
+                highlightVariants === 'color' ? 'bg-primary/10 ring-2 ring-primary/50' : ''
+              }`}>
+                <h3 className={`text-sm font-medium mb-2 transition-colors duration-300 ${
+                  highlightVariants === 'color' ? 'text-primary' : 'text-foreground'
+                }`}>
+                  Color {highlightVariants === 'color' && <span className="text-primary text-xs ml-1">(required)</span>}
+                </h3>
+                <div className="flex flex-wrap gap-2">
+                  {item.colors.map((color, index) => (
+                    <button
+                      key={index}
+                      onClick={() => { setSelectedColor(color); setHighlightVariants(null); }}
+                      className={`flex items-center gap-2 px-3 py-1.5 rounded-full border transition-all ${
+                        selectedColor === color
+                          ? 'bg-primary/10 border-primary ring-1 ring-primary'
+                          : highlightVariants === 'color'
+                            ? 'bg-surface border-primary/50 animate-pulse'
+                            : 'bg-surface border-border hover:border-primary/50'
+                      }`}
+                    >
+                      <div
+                        className="w-4 h-4 rounded-full border border-border"
+                        style={{ backgroundColor: color.toLowerCase() }}
+                      />
+                      <span
+                        className={`text-sm ${selectedColor === color ? 'font-medium text-primary' : 'text-foreground'}`}
+                      >
+                        {color}
+                      </span>
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {item.sizes.length > 0 && (
+              <div className={`rounded-xl p-3 -mx-3 mt-2 transition-all duration-500 ${
+                highlightVariants === 'size' ? 'bg-primary/10 ring-2 ring-primary/50' : ''
+              }`}>
+                <h3 className={`text-sm font-medium mb-2 transition-colors duration-300 ${
+                  highlightVariants === 'size' ? 'text-primary' : 'text-foreground'
+                }`}>
+                  Size {highlightVariants === 'size' && <span className="text-primary text-xs ml-1">(required)</span>}
+                </h3>
+                <div className="flex flex-wrap gap-2">
+                  {item.sizes.map((size, index) => (
+                    <button
+                      key={index}
+                      onClick={() => { setSelectedSize(size); setHighlightVariants(null); }}
+                      className={`px-4 py-2 rounded-lg border text-sm transition-all ${
+                        selectedSize === size
+                          ? 'bg-primary text-primary-foreground border-primary'
+                          : highlightVariants === 'size'
+                            ? 'bg-surface border-primary/50 animate-pulse'
+                            : 'bg-surface border-border text-foreground hover:border-primary/50'
+                      }`}
+                    >
+                      {size}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* Category & Tags */}
+          <div className="flex flex-wrap gap-2">
+            <span className="px-3 py-1 bg-primary/10 text-primary text-sm font-medium rounded-full capitalize">
+              {item.category}
+            </span>
+            {item.tags.slice(0, 4).map((tag, index) => (
+              <span key={index} className="px-3 py-1 bg-surface text-muted-foreground text-sm rounded-full">
+                {tag}
+              </span>
+            ))}
+          </div>
+
+          {/* Buy button */}
+          {item.sourceUrl && (
+            <Link
+              href={item.sourceUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="flex items-center justify-center gap-2 w-full py-3 bg-surface hover:bg-surface-alt border border-border rounded-xl transition-colors"
+            >
+              <ShoppingBag className="w-5 h-5" />
+              <span className="font-medium">View at {item.sourceStore || 'Store'}</span>
+              <ExternalLink className="w-4 h-4" />
+            </Link>
+          )}
+        </div>
+      </main>
+
+      {/* Fixed Bottom Action Bar */}
+      <div className="fixed bottom-0 md:bottom-0 left-0 right-0 bg-background/95 backdrop-blur-lg border-t border-border p-4 z-40">
+        <div className="max-w-2xl mx-auto flex gap-3">
+          <button
+            onClick={handleFavorite}
+            disabled={isLiked}
+            className={`flex-0 p-4 rounded-xl border transition-all ${
+              isLiked
+                ? 'bg-destructive/10 border-destructive/30 text-destructive'
+                : 'bg-surface border-border hover:border-primary/30'
+            }`}
+          >
+            <Heart className={`w-6 h-6 ${isLiked ? 'fill-current' : ''}`} />
+          </button>
+
+          {/* Add to Cart button - accessible without trying on */}
+          <button
+            onClick={handleAddToCart}
+            disabled={isAddingToCart || !item.inStock || addedToCart}
+            className={`flex-1 py-4 rounded-xl font-medium text-base transition-all duration-300 flex items-center justify-center gap-2 active:scale-[0.98] disabled:cursor-not-allowed ${
+              addedToCart
+                ? 'bg-green-600 text-white'
+                : 'bg-primary text-primary-foreground hover:bg-primary-hover disabled:opacity-50'
+            }`}
+          >
+            {isAddingToCart ? (
+              <>
+                <Loader2 className="w-5 h-5 animate-spin" />
+                <span>Adding...</span>
+              </>
+            ) : addedToCart ? (
+              <>
+                <Check className="w-5 h-5" />
+                <span>Added to Cart</span>
+              </>
+            ) : !item.inStock ? (
+              <>
+                <AlertCircle className="w-5 h-5" />
+                <span>Out of Stock</span>
+              </>
+            ) : (
+              <>
+                <ShoppingCart className="w-5 h-5" />
+                <span>Add to Cart</span>
+              </>
+            )}
+          </button>
+
+          {/* Try On button */}
+          <button
+            onClick={handleTryOn}
+            disabled={tryOnStatus === 'starting'}
+            className={`
+              flex-1 py-4 rounded-xl font-medium text-base transition-all duration-300
+              flex items-center justify-center gap-2
+              ${
+                tryOnStatus === 'completed'
+                  ? 'bg-green-600 text-white'
+                  : tryOnStatus === 'starting' || tryOnStatus === 'pending' || tryOnStatus === 'processing'
+                    ? 'bg-primary/50 text-primary-foreground cursor-not-allowed'
+                    : tryOnStatus === 'failed'
+                      ? 'bg-surface border border-border hover:border-primary/30 text-foreground'
+                      : 'bg-surface border border-border hover:border-primary/30 text-foreground'
+              }
+            `}
+          >
+            {tryOnStatus === 'starting' || tryOnStatus === 'pending' || tryOnStatus === 'processing' ? (
+              <>
+                <Loader2 className="w-5 h-5 animate-spin" />
+                <span>Generating...</span>
+              </>
+            ) : tryOnStatus === 'completed' ? (
+              <>
+                <Check className="w-5 h-5" />
+                <span>View Try-On</span>
+              </>
+            ) : tryOnStatus === 'failed' ? (
+              <>
+                <Sparkles className="w-5 h-5" />
+                <span>Retry Try-On</span>
+              </>
+            ) : (
+              <>
+                <Sparkles className="w-5 h-5" />
+                <span>Try On</span>
+              </>
+            )}
+          </button>
+        </div>
+      </div>
+
+      {/* Try-On Result Modal */}
+      <AnimatePresence>
+        {showTryOnResult && tryOnResult?.imageUrl && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4"
+            onClick={() => setShowTryOnResult(false)}
+          >
+            <motion.div
+              initial={{ scale: 0.9, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.9, opacity: 0 }}
+              className="relative max-w-md w-full bg-background rounded-3xl overflow-hidden"
+              onClick={(e) => e.stopPropagation()}
+            >
+              {/* Try-on image */}
+              <div className="relative aspect-[3/4]">
+                <Image
+                  src={tryOnResult.imageUrl}
+                  alt={`Try-on of ${item.name}`}
+                  fill
+                  unoptimized
+                  className="object-cover"
+                />
+              </div>
+
+              {/* Info bar */}
+              <div className="p-4 bg-surface border-t border-border">
+                <div className="flex items-center justify-between mb-3">
+                  <div>
+                    <p className="font-medium text-foreground">{item.name}</p>
+                    <p className="text-sm text-muted-foreground">{formatPrice(item.price, item.currency)}</p>
+                  </div>
+                  <button
+                    onClick={handleFavorite}
+                    className="p-2 rounded-full bg-background hover:bg-surface-alt transition-colors"
+                  >
+                    <Heart className={`w-5 h-5 ${isLiked ? 'fill-destructive text-destructive' : 'text-foreground'}`} />
+                  </button>
+                </div>
+
+                <div className="flex gap-3">
+                  <button
+                    onClick={handleSaveTryOn}
+                    disabled={isSavingTryOn || isSaved}
+                    className={`flex-1 py-3 rounded-xl font-medium border transition-colors flex items-center justify-center gap-2 disabled:opacity-80 disabled:cursor-not-allowed ${
+                      isSaved
+                        ? 'bg-green-600 border-green-600 text-white'
+                        : 'bg-surface border-border text-foreground hover:bg-surface-alt'
+                    }`}
+                  >
+                    {isSavingTryOn ? (
+                      <Loader2 className="w-5 h-5 animate-spin" />
+                    ) : isSaved ? (
+                      <BookmarkCheck className="w-5 h-5" />
+                    ) : (
+                      <Bookmark className="w-5 h-5" />
+                    )}
+                    <span>{isSaved ? 'Saved' : 'Save Look'}</span>
+                  </button>
+
+                  <button
+                    onClick={handleAddToCart}
+                    disabled={isAddingToCart || addedToCart}
+                    className={`flex-1 py-3 rounded-xl font-medium transition-colors flex items-center justify-center gap-2 disabled:opacity-50 ${
+                      addedToCart
+                        ? 'bg-green-600 text-white'
+                        : 'bg-primary text-primary-foreground hover:bg-primary-hover'
+                    }`}
+                  >
+                    {isAddingToCart ? (
+                      <>
+                        <Loader2 className="w-5 h-5 animate-spin" />
+                        Adding...
+                      </>
+                    ) : addedToCart ? (
+                      <>
+                        <Check className="w-5 h-5" />
+                        Added to Cart
+                      </>
+                    ) : (
+                      <>
+                        <ShoppingCart className="w-5 h-5" />
+                        Add to Cart
+                      </>
+                    )}
+                  </button>
+                </div>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </div>
+  );
+}

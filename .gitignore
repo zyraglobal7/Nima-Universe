@@ -1,0 +1,64 @@
+# See https://help.github.com/articles/ignoring-files/ for more about ignoring files.
+
+# dependencies
+node_modules/
+/.pnp
+.pnp.*
+.yarn/*
+!.yarn/patches
+!.yarn/plugins
+!.yarn/releases
+!.yarn/versions
+
+# testing
+/coverage
+
+# production
+/build
+
+# misc
+.DS_Store
+*.pem
+
+# debug
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.pnpm-debug.log*
+
+# env files (can opt-in for committing if needed)
+.env
+.env.local
+.env*.local
+
+# typescript
+*.tsbuildinfo
+
+# Convex generated (regenerated via `npm run dev:backend`)
+packages/backend/convex/_generated
+
+# Next.js (web)
+apps/web/.next/
+apps/web/out/
+
+# Expo (native)
+apps/native/.expo/
+apps/native/dist/
+apps/native/web-build/
+apps/native/.metro-health-check*
+
+# Generated native folders
+apps/native/ios/
+apps/native/android/
+
+# Native signing / credentials
+apps/native/*.jks
+apps/native/*.p8
+apps/native/*.p12
+apps/native/*.key
+apps/native/*.mobileprovision
+apps/native/credentials.json
+apps/native/credentials/
+apps/native/google-services.json
+apps/native/GoogleService-Info.plist
+apps/native/*-firebase-adminsdk-*.json
