@@ -34,8 +34,7 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 
-# Convex generated (regenerated via `npm run dev:backend`)
-packages/backend/convex/_generated
+# Convex generated files are committed so Vercel can build without the CLI
 
 # Next.js (web)
 apps/web/.next/
