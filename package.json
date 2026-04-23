@@ -11,6 +11,11 @@
     "dev:native": "npm run start --workspace=apps/native",
     "dev:backend": "npm run dev --workspace=packages/backend",
     "deploy:backend": "npm run deploy --workspace=packages/backend"
+  },
+  "overrides": {
+    "@types/react": "~19.1.0",
+    "@types/react-dom": "~19.1.0",
+    "zod": "^4.1.13"
   }
 }
 

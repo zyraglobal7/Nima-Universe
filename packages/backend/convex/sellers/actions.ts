@@ -1,6 +1,7 @@
 'use node';
 
 import { action, ActionCtx } from '../_generated/server';
+import { Id } from '../_generated/dataModel';
 import { v } from 'convex/values';
 import { generateObject } from 'ai';
 import { createOpenAI } from '@ai-sdk/openai';
@@ -216,7 +217,7 @@ export const generateGhostMannequin = action({
     args: { imageUrl: string }
   ): Promise<{
     success: boolean;
-    storageId?: string;
+    storageId?: Id<'_storage'>;
     url?: string;
     error?: string;
   }> => {
