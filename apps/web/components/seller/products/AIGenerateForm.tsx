@@ -6,9 +6,10 @@ import { api } from '@/convex/_generated/api';
 import type { Id } from '@/convex/_generated/dataModel';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
+import { Switch } from '@/components/ui/switch';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { toast } from 'sonner';
-import { Upload, Loader2, Sparkles, X, Check, RefreshCw } from 'lucide-react';
+import { Upload, Loader2, Sparkles, X, Check, RefreshCw, Ghost } from 'lucide-react';
 import Image from 'next/image';
 import { ItemFormFields, type ItemFormData, defaultFormData } from '@/components/admin/items/ItemFormFields';
 
@@ -25,7 +26,7 @@ interface AIGenerateFormProps {
   onCancel?: () => void;
 }
 
-type Step = 'upload' | 'generating' | 'review';
+type Step = 'upload' | 'ghost_mannequin' | 'generating' | 'review';
 
 export function AIGenerateForm({ onSuccess, onCancel }: AIGenerateFormProps) {
   const [step, setStep] = useState<Step>('upload');
@@ -33,11 +34,13 @@ export function AIGenerateForm({ onSuccess, onCancel }: AIGenerateFormProps) {
   const [formData, setFormData] = useState<ItemFormData>(defaultFormData);
   const [isUploading, setIsUploading] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [ghostMannequin, setGhostMannequin] = useState(false);
 
   // Seller mutations
   const generateUploadUrl = useMutation(api.sellers.mutations.generateUploadUrl);
   const getStorageUrl = useMutation(api.sellers.mutations.getStorageUrl);
   const generateProductDetails = useAction(api.sellers.actions.generateProductDetails);
+  const generateGhostMannequinAction = useAction(api.sellers.actions.generateGhostMannequin);
   const createProduct = useMutation(api.sellers.mutations.createSellerProduct);
   const addItemImage = useMutation(api.sellers.mutations.addItemImage);
 
@@ -47,7 +50,6 @@ export function AIGenerateForm({ onSuccess, onCancel }: AIGenerateFormProps) {
         const result = await generateProductDetails({ imageUrl });
 
         if (result.success && result.data) {
-          // Convert AI response to form data
           setFormData({
             name: result.data.name,
             brand: result.data.brand || '',
@@ -95,10 +97,8 @@ export function AIGenerateForm({ onSuccess, onCancel }: AIGenerateFormProps) {
 
       setIsUploading(true);
       try {
-        // Get upload URL
         const uploadUrl = await generateUploadUrl({});
 
-        // Upload file
         const response = await fetch(uploadUrl, {
           method: 'POST',
           headers: { 'Content-Type': file.type },
@@ -110,18 +110,38 @@ export function AIGenerateForm({ onSuccess, onCancel }: AIGenerateFormProps) {
         }
 
         const { storageId } = await response.json();
-
-        // Get the URL for preview and AI analysis
         const url = await getStorageUrl({ storageId });
 
-        if (url) {
-          setUploadedImage({ storageId, url, imageType: 'front' });
-          toast.success('Image uploaded');
+        if (!url) throw new Error('Failed to get image URL');
 
-          // Automatically start AI generation
-          setStep('generating');
-          await generateDetails(url);
+        let activeImage: UploadedImage = { storageId, url, imageType: 'front' };
+        setUploadedImage(activeImage);
+        toast.success('Image uploaded');
+
+        if (ghostMannequin) {
+          setStep('ghost_mannequin');
+          setIsUploading(false);
+          try {
+            const gmResult = await generateGhostMannequinAction({ imageUrl: url });
+            if (gmResult.success && gmResult.storageId && gmResult.url) {
+              activeImage = {
+                storageId: gmResult.storageId as Id<'_storage'>,
+                url: gmResult.url,
+                imageType: 'front',
+              };
+              setUploadedImage(activeImage);
+            } else {
+              toast.warning('Ghost mannequin effect failed, using original image');
+            }
+          } catch {
+            toast.warning('Ghost mannequin effect failed, using original image');
+          }
+        } else {
+          setIsUploading(false);
         }
+
+        setStep('generating');
+        await generateDetails(activeImage.url);
       } catch (error) {
         console.error('Upload error:', error);
         toast.error('Failed to upload image');
@@ -130,7 +150,7 @@ export function AIGenerateForm({ onSuccess, onCancel }: AIGenerateFormProps) {
         setIsUploading(false);
       }
     },
-    [generateUploadUrl, getStorageUrl, generateDetails],
+    [generateUploadUrl, getStorageUrl, generateDetails, generateGhostMannequinAction, ghostMannequin],
   );
 
   const handleRegenerate = async () => {
@@ -165,7 +185,6 @@ export function AIGenerateForm({ onSuccess, onCancel }: AIGenerateFormProps) {
       return;
     }
 
-    // Validation
     if (!formData.name.trim()) {
       toast.error('Please enter a product name');
       return;
@@ -178,7 +197,6 @@ export function AIGenerateForm({ onSuccess, onCancel }: AIGenerateFormProps) {
 
     setIsSubmitting(true);
     try {
-      // Create the item
       const itemId = await createProduct({
         name: formData.name.trim(),
         brand: formData.brand.trim() || undefined,
@@ -186,7 +204,7 @@ export function AIGenerateForm({ onSuccess, onCancel }: AIGenerateFormProps) {
         category: formData.category,
         subcategory: formData.subcategory.trim() || undefined,
         gender: formData.gender,
-        price: Math.round(parseFloat(formData.price)), // Store price as-is (no cents conversion)
+        price: Math.round(parseFloat(formData.price)),
         currency: formData.currency,
         originalPrice: formData.originalPrice ? Math.round(parseFloat(formData.originalPrice)) : undefined,
         colors: formData.colors,
@@ -196,10 +214,9 @@ export function AIGenerateForm({ onSuccess, onCancel }: AIGenerateFormProps) {
         occasion: formData.occasion.length > 0 ? formData.occasion : undefined,
         season: formData.season.length > 0 ? formData.season : undefined,
         inStock: formData.inStock,
-        sku: undefined, // Optional
+        sku: undefined,
       });
 
-      // Add the image to the item
       await addItemImage({
         itemId,
         storageId: uploadedImage.storageId,
@@ -233,7 +250,24 @@ export function AIGenerateForm({ onSuccess, onCancel }: AIGenerateFormProps) {
               review and edit the information before saving.
             </CardDescription>
           </CardHeader>
-          <CardContent>
+          <CardContent className="space-y-4">
+            <div className="flex items-center justify-between rounded-lg border border-border p-3">
+              <div className="flex items-center gap-2">
+                <Ghost className="h-4 w-4 text-primary" />
+                <div>
+                  <p className="text-sm font-medium">Ghost Mannequin</p>
+                  <p className="text-xs text-muted-foreground">
+                    Remove model/mannequin — show garment on an invisible body
+                  </p>
+                </div>
+              </div>
+              <Switch
+                checked={ghostMannequin}
+                onCheckedChange={setGhostMannequin}
+                disabled={isUploading}
+              />
+            </div>
+
             <div
               onDrop={handleDrop}
               onDragOver={(e) => e.preventDefault()}
@@ -281,7 +315,43 @@ export function AIGenerateForm({ onSuccess, onCancel }: AIGenerateFormProps) {
     );
   }
 
-  // Step 2: Generating
+  // Step 2a: Ghost Mannequin Processing
+  if (step === 'ghost_mannequin') {
+    return (
+      <div className="space-y-6">
+        <Card>
+          <CardContent className="pt-6">
+            <div className="flex flex-col items-center gap-6 py-12">
+              {uploadedImage && (
+                <div className="h-48 w-48 rounded-lg overflow-hidden bg-muted">
+                  <Image
+                    src={uploadedImage.url}
+                    alt="Uploaded product"
+                    width={192}
+                    height={192}
+                    unoptimized={
+                      uploadedImage.url.includes('convex.cloud') || uploadedImage.url.includes('convex.site')
+                    }
+                    className="h-full w-full object-cover"
+                  />
+                </div>
+              )}
+              <div className="flex flex-col items-center gap-3">
+                <div className="flex items-center gap-2">
+                  <Ghost className="h-6 w-6 text-primary animate-pulse" />
+                  <Loader2 className="h-6 w-6 animate-spin text-primary" />
+                </div>
+                <p className="font-medium">Applying ghost mannequin effect...</p>
+                <p className="text-sm text-muted-foreground">Removing model and creating an invisible-body look</p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
+  // Step 2b: Generating AI Details
   if (step === 'generating') {
     return (
       <div className="space-y-6">
@@ -363,10 +433,8 @@ export function AIGenerateForm({ onSuccess, onCancel }: AIGenerateFormProps) {
         </CardContent>
       </Card>
 
-      {/* Form Fields */}
       <ItemFormFields data={formData} onChange={setFormData} disabled={isSubmitting} />
 
-      {/* Actions */}
       <div className="flex justify-end gap-3 pt-4 border-t">
         {onCancel && (
           <Button type="button" variant="outline" onClick={onCancel} disabled={isSubmitting}>

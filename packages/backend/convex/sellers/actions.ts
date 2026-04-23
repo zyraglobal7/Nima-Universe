@@ -4,6 +4,7 @@ import { action, ActionCtx } from '../_generated/server';
 import { v } from 'convex/values';
 import { generateObject } from 'ai';
 import { createOpenAI } from '@ai-sdk/openai';
+import { GoogleGenAI } from '@google/genai';
 import { z } from 'zod';
 
 // Category and gender validators for return type
@@ -69,6 +70,8 @@ type ProductDetails = z.infer<typeof productDetailsSchema>;
 const openai = createOpenAI({
   apiKey: process.env.OPENAI_API_KEY,
 });
+
+const genAI = new GoogleGenAI({ apiKey: process.env.GOOGLE_AI_STUDIO_KEY });
 
 /**
  * Generate product details from an image using AI vision
@@ -188,6 +191,87 @@ If you cannot determine certain details with confidence, omit them rather than g
       return {
         success: false,
         error: error instanceof Error ? error.message : 'Failed to generate product details',
+      };
+    }
+  },
+});
+
+/**
+ * Apply ghost mannequin effect to a product image using Gemini image generation.
+ * Removes the model/mannequin and returns a new image of the garment appearing
+ * to be worn by an invisible body.
+ */
+export const generateGhostMannequin = action({
+  args: {
+    imageUrl: v.string(),
+  },
+  returns: v.object({
+    success: v.boolean(),
+    storageId: v.optional(v.id('_storage')),
+    url: v.optional(v.string()),
+    error: v.optional(v.string()),
+  }),
+  handler: async (
+    ctx: ActionCtx,
+    args: { imageUrl: string }
+  ): Promise<{
+    success: boolean;
+    storageId?: string;
+    url?: string;
+    error?: string;
+  }> => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) {
+      return { success: false, error: 'Not authenticated' };
+    }
+
+    try {
+      const response = await fetch(args.imageUrl);
+      const buffer = await response.arrayBuffer();
+      const imageBase64 = Buffer.from(buffer).toString('base64');
+
+      const result = await genAI.models.generateContent({
+        model: 'gemini-3-pro-image-preview',
+        contents: [
+          {
+            text: `Ghost mannequin effect: Transform this clothing item photo so the garment appears to be worn by an invisible ghost mannequin. Remove any visible person, model, or physical mannequin entirely. The clothing should appear naturally filled out and structured in 3D space with proper volume, shape, and drape as if worn by an invisible body. Preserve all garment details, colors, patterns, and textures exactly. Use a clean white or neutral background. The result should look like a professional e-commerce product photo where the clothing is worn by an unseen body.`,
+          },
+          {
+            inlineData: {
+              mimeType: 'image/jpeg',
+              data: imageBase64,
+            },
+          },
+        ],
+        config: { responseModalities: ['TEXT', 'IMAGE'] },
+      });
+
+      const parts = result.candidates?.[0]?.content?.parts;
+      let generatedImageBase64: string | null = null;
+
+      if (parts) {
+        for (const part of parts) {
+          if (part.inlineData?.data) {
+            generatedImageBase64 = part.inlineData.data;
+            break;
+          }
+        }
+      }
+
+      if (!generatedImageBase64) {
+        throw new Error('Ghost mannequin generation returned no image');
+      }
+
+      const imageBytes = Buffer.from(generatedImageBase64, 'base64');
+      const imageBlob = new Blob([imageBytes], { type: 'image/png' });
+      const storageId = await ctx.storage.store(imageBlob);
+      const url = await ctx.storage.getUrl(storageId);
+
+      return { success: true, storageId, url: url ?? undefined };
+    } catch (error) {
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : 'Failed to generate ghost mannequin',
       };
     }
   },

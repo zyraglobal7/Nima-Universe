@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useMutation, useQuery } from 'convex/react';
@@ -54,10 +54,13 @@ export default function SellerOnboardingPage() {
   const generateUploadUrl = useMutation(api.sellers.mutations.generateUploadUrl);
 
   // Redirect if already a seller
-  if (existingSeller) {
-    router.push('/seller');
-    return null;
-  }
+  useEffect(() => {
+    if (existingSeller) {
+      router.push('/seller');
+    }
+  }, [existingSeller, router]);
+
+  if (existingSeller) return null;
 
   // Auto-generate slug from shop name
   const handleShopNameChange = (value: string) => {
