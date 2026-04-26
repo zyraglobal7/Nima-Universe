@@ -39,8 +39,6 @@ yarn-error.*
 # typescript
 *.tsbuildinfo
 
-# Convex generated files
-convex/_generated/
 
 # Firebase Admin SDK keys
 *-firebase-adminsdk-*.json

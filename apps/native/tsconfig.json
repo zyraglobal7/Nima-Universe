@@ -5,7 +5,7 @@
     "baseUrl": ".",
     "paths": {
       "@/convex/*": [
-        "../../packages/backend/convex/*"
+        "./convex/*"
       ],
       "@/*": [
         "./*"
