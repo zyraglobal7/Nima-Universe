@@ -15,9 +15,15 @@ config.resolver.nodeModulesPaths = [
   path.resolve(workspaceRoot, "node_modules"),
 ];
 
-// Alias react-native-pager-view to a web shim on web platform
 const originalResolver = config.resolver.resolveRequest;
 config.resolver.resolveRequest = (context, moduleName, platform) => {
+  // Resolve @/convex/* → packages/backend/convex/* across the monorepo boundary
+  if (moduleName.startsWith("@/convex/")) {
+    const rest = moduleName.slice("@/convex/".length);
+    const resolved = path.resolve(workspaceRoot, "packages/backend/convex", rest);
+    return context.resolveRequest(context, resolved, platform);
+  }
+  // Alias react-native-pager-view to a web shim on web platform
   if (platform === "web" && moduleName === "react-native-pager-view") {
     return {
       filePath: path.resolve(__dirname, "shims/react-native-pager-view.web.js"),
