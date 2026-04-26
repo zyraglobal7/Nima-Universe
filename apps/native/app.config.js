@@ -4,7 +4,7 @@ export default {
     slug: "nima-ai",
     version: "1.1.0",
     orientation: "portrait",
-    icon: "./assets/icon.png",
+    icon: "./assets/icon-512x512.png",
     userInterfaceStyle: "automatic",
     scheme: "shopnima",
     newArchEnabled: true,

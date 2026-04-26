@@ -2,8 +2,18 @@ const { getDefaultConfig } = require("expo/metro-config");
 const { withNativeWind } = require("nativewind/metro");
 const path = require("path");
 
+const projectRoot = __dirname;
+const workspaceRoot = path.resolve(projectRoot, "../..");
+
 /** @type {import('expo/metro-config').MetroConfig} */
-const config = getDefaultConfig(__dirname);
+const config = getDefaultConfig(projectRoot);
+
+// Monorepo: watch all packages so Metro can resolve cross-boundary imports
+config.watchFolders = [workspaceRoot];
+config.resolver.nodeModulesPaths = [
+  path.resolve(projectRoot, "node_modules"),
+  path.resolve(workspaceRoot, "node_modules"),
+];
 
 // Alias react-native-pager-view to a web shim on web platform
 const originalResolver = config.resolver.resolveRequest;
