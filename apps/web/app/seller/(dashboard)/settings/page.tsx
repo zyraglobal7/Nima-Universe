@@ -216,7 +216,7 @@ export default function SellerSettingsPage() {
               ? 'Your store is verified and visible to all customers.'
               : seller?.verificationStatus === 'rejected'
               ? 'Your verification was rejected. Please contact support for more information.'
-              : 'Your store is under review. This usually takes 1-2 business days.'}
+              : 'Your store is currently under review. This usually takes 1-2 business days.'}
           </p>
         </CardContent>
       </Card>
