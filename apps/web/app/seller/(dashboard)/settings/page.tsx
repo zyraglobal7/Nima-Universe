@@ -19,6 +19,7 @@ import {
   CheckCircle2,
   Clock,
   XCircle,
+  LogOut,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import type { Id } from '@/convex/_generated/dataModel';
@@ -407,6 +408,22 @@ export default function SellerSettingsPage() {
               placeholder="+1 (555) 123-4567"
             />
           </div>
+        </CardContent>
+      </Card>
+
+      {/* Account */}
+      <Card>
+        <CardHeader>
+          <CardTitle>Account</CardTitle>
+          <CardDescription>Manage your account session</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <Button variant="destructive" asChild>
+            <a href="/sign-out">
+              <LogOut className="w-4 h-4 mr-2" />
+              Log Out
+            </a>
+          </Button>
         </CardContent>
       </Card>
     </div>

@@ -20,6 +20,7 @@ export default authkitMiddleware({
       // Auth routes
       '/sign-in',
       '/sign-up',
+      '/sign-out',
       '/callback',
       // Public browsing (limited features without auth)
       '/discover',
