@@ -71,6 +71,7 @@ export const getCurrentSeller = query({
       bannerStorageId: v.optional(v.id('_storage')),
       contactEmail: v.optional(v.string()),
       contactPhone: v.optional(v.string()),
+      websiteUrl: v.optional(v.string()),
       verificationStatus: v.union(
         v.literal('pending'),
         v.literal('verified'),
@@ -89,6 +90,7 @@ export const getCurrentSeller = query({
       logoUrl: v.optional(v.string()),
       bannerUrl: v.optional(v.string()),
       tryOnCredits: v.optional(v.number()),
+      watermarkEnabled: v.optional(v.boolean()),
     }),
     v.null()
   ),
@@ -724,6 +726,10 @@ export const getSellerProduct = query({
         viewCount: v.optional(v.number()),
         saveCount: v.optional(v.number()),
         purchaseCount: v.optional(v.number()),
+        tryOnCount: v.optional(v.number()),
+        lookbookSaveCount: v.optional(v.number()),
+        cartAddCount: v.optional(v.number()),
+        lookInclusionCount: v.optional(v.number()),
         createdAt: v.number(),
         updatedAt: v.number(),
       }),

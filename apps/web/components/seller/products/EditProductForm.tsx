@@ -2,6 +2,7 @@
 
 import { useState, useCallback, useEffect } from 'react';
 import { useQuery, useMutation } from 'convex/react';
+import { applyWatermarkToBlob } from '@/lib/utils/watermark';
 import { api } from '@/convex/_generated/api';
 import type { Id } from '@/convex/_generated/dataModel';
 import { Button } from '@/components/ui/button';
@@ -31,9 +32,11 @@ interface EditProductFormProps {
   itemId: Id<'items'>;
   onSuccess?: () => void;
   onCancel?: () => void;
+  watermarkEnabled?: boolean;
+  shopName?: string;
 }
 
-export function EditProductForm({ itemId, onSuccess, onCancel }: EditProductFormProps) {
+export function EditProductForm({ itemId, onSuccess, onCancel, watermarkEnabled = false, shopName = '' }: EditProductFormProps) {
   const [formData, setFormData] = useState<ItemFormData>(defaultFormData);
   const [existingImages, setExistingImages] = useState<ExistingImage[]>([]);
   const [newImages, setNewImages] = useState<NewImage[]>([]);
@@ -58,7 +61,7 @@ export function EditProductForm({ itemId, onSuccess, onCancel }: EditProductForm
       const { item, images } = itemData;
 
       const validGenders = ['male', 'female', 'unisex'] as const;
-      const validCategories = ['top', 'bottom', 'dress', 'outfit', 'outerwear', 'shoes', 'accessory', 'bag', 'jewelry'] as const;
+      const validCategories = ['top', 'bottom', 'dress', 'outfit', 'outerwear', 'shoes', 'accessory', 'bag', 'jewelry', 'swimwear'] as const;
       
       setFormData({
         name: item.name || '',
@@ -103,11 +106,17 @@ export function EditProductForm({ itemId, onSuccess, onCancel }: EditProductForm
 
       setIsUploading(true);
       try {
+        let blob: Blob = file;
+        if (watermarkEnabled && shopName) {
+          blob = await applyWatermarkToBlob(file, shopName);
+          toast.info('Watermark applied');
+        }
+
         const uploadUrl = await generateUploadUrl({});
         const response = await fetch(uploadUrl, {
           method: 'POST',
-          headers: { 'Content-Type': file.type },
-          body: file,
+          headers: { 'Content-Type': blob.type },
+          body: blob,
         });
 
         if (!response.ok) {
@@ -128,7 +137,7 @@ export function EditProductForm({ itemId, onSuccess, onCancel }: EditProductForm
         setIsUploading(false);
       }
     },
-    [generateUploadUrl, getStorageUrl]
+    [generateUploadUrl, getStorageUrl, watermarkEnabled, shopName]
   );
 
   const handleDrop = useCallback(
@@ -161,6 +170,11 @@ export function EditProductForm({ itemId, onSuccess, onCancel }: EditProductForm
 
     if (!formData.price || parseFloat(formData.price) <= 0) {
       toast.error('Please enter a valid price');
+      return;
+    }
+
+    if (!formData.category) {
+      toast.error('Please select a category');
       return;
     }
 

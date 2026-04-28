@@ -110,6 +110,7 @@ export function ItemsTable({ onEdit }: ItemsTableProps) {
   });
 
   const updateProduct = useMutation(api.sellers.mutations.updateSellerProduct);
+  const deleteProduct = useMutation(api.sellers.mutations.deleteSellerProduct);
 
   const handleToggleActive = async (itemId: Id<'items'>, currentStatus: boolean) => {
     try {
@@ -131,12 +132,8 @@ export function ItemsTable({ onEdit }: ItemsTableProps) {
   const handleDeleteConfirm = async () => {
     if (itemToDelete) {
       try {
-        // Soft delete (deactivate)
-        await updateProduct({
-          itemId: itemToDelete,
-          isActive: false,
-        });
-        toast.success('Product deactivated (deleted)');
+        await deleteProduct({ itemId: itemToDelete });
+        toast.success('Product deleted');
         setItemToDelete(null);
       } catch (error) {
         toast.error('Failed to delete product');
@@ -440,8 +437,7 @@ export function ItemsTable({ onEdit }: ItemsTableProps) {
           <AlertDialogHeader>
             <AlertDialogTitle>Delete Product</AlertDialogTitle>
             <AlertDialogDescription>
-              Are you sure you want to delete this product? This will deactivate the product. It can be restored later
-              or permanently deleted by contacting support.
+              Are you sure you want to delete this product? This will permanently remove it along with all its images and cannot be undone.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>

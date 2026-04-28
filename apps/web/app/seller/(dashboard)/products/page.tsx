@@ -24,16 +24,20 @@ import {
   SheetTitle,
 } from '@/components/ui/sheet';
 import { Checkbox } from '@/components/ui/checkbox';
-import { Plus, Sparkles, Package, Zap, Link2, Copy, Check, ExternalLink, LayoutGrid } from 'lucide-react';
+import { Plus, Sparkles, Package, Zap, Link2, Copy, Check, ExternalLink, LayoutGrid, Images, Stamp } from 'lucide-react';
+import { Switch } from '@/components/ui/switch';
+import { useMutation } from 'convex/react';
 import { ItemsTable } from '@/components/seller/products/ItemsTable';
 import { AIGenerateForm } from '@/components/seller/products/AIGenerateForm';
 import { CreateProductForm } from '@/components/seller/products/CreateProductForm';
+import { BulkUploadModal } from '@/components/shared/BulkUploadModal';
 import type { Id } from '@/convex/_generated/dataModel';
 
 export default function SellerProductsPage() {
   const router = useRouter();
   const [showAIDialog, setShowAIDialog] = useState(false);
   const [showCreateSheet, setShowCreateSheet] = useState(false);
+  const [showBulkUpload, setShowBulkUpload] = useState(false);
   const [activeTab, setActiveTab] = useState<'all' | 'create' | 'tryon-links'>('all');
   const [copiedId, setCopiedId] = useState<string | null>(null);
   const [allCopied, setAllCopied] = useState(false);
@@ -44,6 +48,7 @@ export default function SellerProductsPage() {
   const tryOnCredits = useQuery(api.sellerTryOns.queries.getSellerTryOnCredits);
   const seller = useQuery(api.sellers.queries.getCurrentSeller);
   const productsResult = useQuery(api.sellers.queries.getSellerProducts, { isActive: true, limit: 200 });
+  const toggleWatermark = useMutation(api.sellers.mutations.toggleWatermark);
 
   const copyLink = async (productId: Id<'items'>, name: string) => {
     if (!seller) return;
@@ -136,6 +141,16 @@ export default function SellerProductsPage() {
             <div className="flex items-center gap-1.5 text-sm text-muted-foreground">
               <Zap className="h-4 w-4 text-primary" />
               <span>{tryOnCredits} try-on credits</span>
+            </div>
+          )}
+          {seller && (
+            <div className="flex items-center gap-2 text-sm text-muted-foreground border border-border rounded-lg px-3 py-1.5">
+              <Stamp className="h-3.5 w-3.5" />
+              <span>Watermark</span>
+              <Switch
+                checked={seller.watermarkEnabled ?? false}
+                onCheckedChange={(checked) => toggleWatermark({ enabled: checked })}
+              />
             </div>
           )}
         <div className="flex gap-2">
@@ -236,6 +251,22 @@ export default function SellerProductsPage() {
                 <CardDescription>
                   Upload an image and let AI analyze it to automatically fill in product details.
                   You can review and edit before saving.
+                </CardDescription>
+              </CardHeader>
+            </Card>
+
+            {/* Bulk Upload Card */}
+            <Card
+              className={atLimit ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer hover:border-primary/50 transition-colors'}
+              onClick={atLimit ? undefined : () => setShowBulkUpload(true)}
+            >
+              <CardHeader>
+                <div className="h-12 w-12 rounded-lg bg-primary/10 flex items-center justify-center mb-2">
+                  <Images className="h-6 w-6 text-primary" />
+                </div>
+                <CardTitle>Bulk Upload</CardTitle>
+                <CardDescription>
+                  Drop a folder of up to {stats?.productLimit !== null && stats ? stats.productLimit - stats.totalProducts : 99} images. Set names and prices, then AI fills in descriptions, tags, and categories automatically.
                 </CardDescription>
               </CardHeader>
             </Card>
@@ -469,6 +500,8 @@ export default function SellerProductsPage() {
           <AIGenerateForm
             onSuccess={handleCreateSuccess}
             onCancel={() => setShowAIDialog(false)}
+            watermarkEnabled={seller?.watermarkEnabled ?? false}
+            shopName={seller?.shopName ?? ''}
           />
         </DialogContent>
       </Dialog>
@@ -489,10 +522,22 @@ export default function SellerProductsPage() {
             <CreateProductForm
               onSuccess={handleCreateSuccess}
               onCancel={() => setShowCreateSheet(false)}
+              watermarkEnabled={seller?.watermarkEnabled ?? false}
+              shopName={seller?.shopName ?? ''}
             />
           </div>
         </SheetContent>
       </Sheet>
+
+      {/* Bulk Upload Modal */}
+      <BulkUploadModal
+        open={showBulkUpload}
+        onOpenChange={setShowBulkUpload}
+        mode="seller"
+        seller={seller}
+        stats={stats}
+        onComplete={() => setActiveTab('all')}
+      />
     </div>
   );
 }

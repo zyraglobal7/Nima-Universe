@@ -191,6 +191,97 @@ If you cannot determine certain details with confidence, omit them rather than g
   },
 });
 
+// Zod schema for bulk enrichment (no name or suggestedPriceRange — user controls those)
+const bulkEnrichSchema = z.object({
+  brand: z.string().optional().describe('Brand name if visible or recognizable'),
+  description: z
+    .string()
+    .describe('A detailed, engaging product description for an e-commerce listing (2-3 sentences)'),
+  category: z
+    .enum(['top', 'bottom', 'dress', 'outfit', 'outerwear', 'shoes', 'accessory', 'bag', 'jewelry', 'swimwear'])
+    .describe('The primary category. IMPORTANT: Use "swimwear" for ANY bathing suit, bikini, or swim trunks, even if it is a set of items. Use "outfit" for non-swimwear sets.'),
+  subcategory: z.string().optional().describe('More specific category (e.g., "t-shirt", "jeans", "sneakers")'),
+  suggestedGender: z.enum(['male', 'female', 'unisex']).describe('The target gender for this item'),
+  colors: z.array(z.string()).describe('List of colors visible in the item'),
+  tags: z.array(z.string()).describe('Style tags for the item (e.g., ["casual", "summer", "streetwear"])'),
+  material: z.string().optional().describe('Likely material of the item if identifiable'),
+  occasion: z.array(z.string()).optional().describe('Suitable occasions (e.g., ["casual", "work"])'),
+  season: z.array(z.string()).optional().describe('Suitable seasons (e.g., ["summer", "all_season"])'),
+});
+
+type BulkEnrichData = z.infer<typeof bulkEnrichSchema>;
+
+/**
+ * Enrich a product image with AI-generated metadata for bulk upload.
+ * Does NOT infer name or price — those are user-controlled in bulk mode.
+ */
+export const bulkEnrichItem = action({
+  args: {
+    imageUrl: v.string(),
+  },
+  returns: v.object({
+    success: v.boolean(),
+    data: v.optional(
+      v.object({
+        brand: v.optional(v.string()),
+        description: v.string(),
+        category: v.union(
+          v.literal('top'), v.literal('bottom'), v.literal('dress'), v.literal('outfit'),
+          v.literal('outerwear'), v.literal('shoes'), v.literal('accessory'), v.literal('bag'),
+          v.literal('jewelry'), v.literal('swimwear')
+        ),
+        subcategory: v.optional(v.string()),
+        suggestedGender: v.union(v.literal('male'), v.literal('female'), v.literal('unisex')),
+        colors: v.array(v.string()),
+        tags: v.array(v.string()),
+        material: v.optional(v.string()),
+        occasion: v.optional(v.array(v.string())),
+        season: v.optional(v.array(v.string())),
+      })
+    ),
+    error: v.optional(v.string()),
+  }),
+  handler: async (
+    _ctx: ActionCtx,
+    args: { imageUrl: string }
+  ): Promise<{ success: boolean; data?: BulkEnrichData; error?: string }> => {
+    try {
+      const result = await generateObject({
+        model: openai('gpt-4o'),
+        schema: bulkEnrichSchema,
+        schemaName: 'BulkEnrichData',
+        schemaDescription: 'Fashion product metadata extracted from an image (no name or price)',
+        messages: [
+          {
+            role: 'system',
+            content: `You are a fashion expert and product cataloging specialist.
+Analyze the provided image of a fashion item and extract metadata.
+Do NOT infer or suggest a product name or price — the seller will provide those.
+Be specific about colors, materials, and style characteristics.
+Generate an engaging, professional product description suitable for an e-commerce platform.
+If you cannot determine certain details with confidence, omit them rather than guessing.`,
+          },
+          {
+            role: 'user',
+            content: [
+              { type: 'text', text: 'Please analyze this fashion item image and provide product metadata for our catalog.' },
+              { type: 'image', image: args.imageUrl },
+            ],
+          },
+        ],
+        temperature: 0.3,
+      });
+      return { success: true, data: result.object };
+    } catch (error) {
+      console.error('Bulk enrich error:', error);
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : 'Failed to enrich item',
+      };
+    }
+  },
+});
+
 /**
  * Apply ghost mannequin effect to a product image using Gemini image generation.
  * Removes the model/mannequin and returns a new image of the garment appearing

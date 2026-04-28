@@ -632,6 +632,62 @@ export const getTierConfigs = query({
   },
 });
 
+/**
+ * Admin: get a single seller's profile + active product count (for bulk upload)
+ */
+export const getSellerForAdmin = query({
+  args: { sellerId: v.id('sellers') },
+  returns: v.union(
+    v.object({
+      _id: v.id('sellers'),
+      shopName: v.string(),
+      slug: v.string(),
+      websiteUrl: v.optional(v.string()),
+      tier: v.optional(v.union(
+        v.literal('basic'), v.literal('starter'), v.literal('growth'), v.literal('premium')
+      )),
+      activeProductCount: v.number(),
+    }),
+    v.null()
+  ),
+  handler: async (
+    ctx: QueryCtx,
+    args: { sellerId: Id<'sellers'> }
+  ): Promise<{
+    _id: Id<'sellers'>;
+    shopName: string;
+    slug: string;
+    websiteUrl?: string;
+    tier?: 'basic' | 'starter' | 'growth' | 'premium';
+    activeProductCount: number;
+  } | null> => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) throw new Error('Not authenticated');
+    const user = await ctx.db
+      .query('users')
+      .withIndex('by_workos_user_id', (q) => q.eq('workosUserId', identity.subject))
+      .unique();
+    if (!user || user.role !== 'admin') throw new Error('Not authorized');
+
+    const seller = await ctx.db.get(args.sellerId);
+    if (!seller) return null;
+
+    const activeProducts = await ctx.db
+      .query('items')
+      .withIndex('by_seller_and_active', (q) => q.eq('sellerId', seller._id).eq('isActive', true))
+      .collect();
+
+    return {
+      _id: seller._id,
+      shopName: seller.shopName,
+      slug: seller.slug,
+      websiteUrl: seller.websiteUrl,
+      tier: seller.tier,
+      activeProductCount: activeProducts.length,
+    };
+  },
+});
+
 export const getSellerSubscriptionsAdmin = query({
   args: { sellerId: v.id('sellers') },
   returns: v.array(v.object({

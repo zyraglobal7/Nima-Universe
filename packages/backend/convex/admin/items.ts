@@ -67,6 +67,7 @@ export const createItem = mutation({
     stockQuantity: v.optional(v.number()),
     isFeatured: v.optional(v.boolean()),
     sku: v.optional(v.string()),
+    sellerId: v.optional(v.id('sellers')),
   },
   returns: v.id('items'),
   handler: async (
@@ -94,6 +95,7 @@ export const createItem = mutation({
       stockQuantity?: number;
       isFeatured?: boolean;
       sku?: string;
+      sellerId?: Id<'sellers'>;
     }
   ): Promise<Id<'items'>> => {
     // Note: In production, add admin authentication check here
@@ -102,6 +104,7 @@ export const createItem = mutation({
 
     const itemId = await ctx.db.insert('items', {
       publicId,
+      sellerId: args.sellerId,
       sku: args.sku,
       name: args.name,
       brand: args.brand,

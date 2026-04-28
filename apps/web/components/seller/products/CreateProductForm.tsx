@@ -2,6 +2,7 @@
 
 import { useState, useCallback } from 'react';
 import { useMutation } from 'convex/react';
+import { applyWatermarkToBlob } from '@/lib/utils/watermark';
 import { api } from '@/convex/_generated/api';
 import type { Id } from '@/convex/_generated/dataModel';
 import { Button } from '@/components/ui/button';
@@ -23,9 +24,11 @@ interface UploadedImage {
 interface CreateProductFormProps {
   onSuccess?: (itemId: Id<'items'>) => void;
   onCancel?: () => void;
+  watermarkEnabled?: boolean;
+  shopName?: string;
 }
 
-export function CreateProductForm({ onSuccess, onCancel }: CreateProductFormProps) {
+export function CreateProductForm({ onSuccess, onCancel, watermarkEnabled = false, shopName = '' }: CreateProductFormProps) {
   const [formData, setFormData] = useState<ItemFormData>({ ...defaultFormData });
   const [images, setImages] = useState<UploadedImage[]>([]);
   const [isUploading, setIsUploading] = useState(false);
@@ -45,17 +48,20 @@ export function CreateProductForm({ onSuccess, onCancel }: CreateProductFormProp
 
       setIsUploading(true);
       try {
-        const uploadUrl = await generateUploadUrl({});
+        let blob: Blob = file;
+        if (watermarkEnabled && shopName) {
+          blob = await applyWatermarkToBlob(file, shopName);
+          toast.info('Watermark applied');
+        }
 
+        const uploadUrl = await generateUploadUrl({});
         const response = await fetch(uploadUrl, {
           method: 'POST',
-          headers: { 'Content-Type': file.type },
-          body: file,
+          headers: { 'Content-Type': blob.type },
+          body: blob,
         });
 
-        if (!response.ok) {
-          throw new Error('Upload failed');
-        }
+        if (!response.ok) throw new Error('Upload failed');
 
         const { storageId } = await response.json();
         const url = await getStorageUrl({ storageId });
@@ -71,7 +77,7 @@ export function CreateProductForm({ onSuccess, onCancel }: CreateProductFormProp
         setIsUploading(false);
       }
     },
-    [generateUploadUrl, getStorageUrl]
+    [generateUploadUrl, getStorageUrl, watermarkEnabled, shopName]
   );
 
   const handleDrop = useCallback(

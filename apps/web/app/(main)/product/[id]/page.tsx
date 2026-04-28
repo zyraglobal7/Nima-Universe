@@ -30,7 +30,10 @@ type TryOnStatus = 'idle' | 'starting' | 'pending' | 'processing' | 'completed' 
 
 export default function ProductDetailPage() {
   const params = useParams();
-  const itemId = params.id as Id<'items'>;
+  const rawId = params.id as string;
+  // Convex IDs are alphanumeric — guard against bots/malformed URLs before querying
+  const isValidId = typeof rawId === 'string' && /^[a-zA-Z0-9]+$/.test(rawId);
+  const itemId = rawId as Id<'items'>;
 
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
   const [isLiked, setIsLiked] = useState(false);
@@ -47,10 +50,10 @@ export default function ProductDetailPage() {
   const [highlightVariants, setHighlightVariants] = useState<'color' | 'size' | null>(null);
   const variantSectionRef = useRef<HTMLDivElement>(null);
 
-  // Queries
-  const itemData = useQuery(api.items.queries.getItemWithImage, { itemId });
-  const itemImages = useQuery(api.items.queries.getItemImages, { itemId });
-  const existingTryOn = useQuery(api.itemTryOns.queries.getItemTryOnForUser, { itemId });
+  // Queries — skip all if the ID is not a valid Convex ID format
+  const itemData = useQuery(api.items.queries.getItemWithImage, isValidId ? { itemId } : 'skip');
+  const itemImages = useQuery(api.items.queries.getItemImages, isValidId ? { itemId } : 'skip');
+  const existingTryOn = useQuery(api.itemTryOns.queries.getItemTryOnForUser, isValidId ? { itemId } : 'skip');
 
   // Mutations
   const startTryOn = useMutation(api.workflows.index.startItemTryOn);
@@ -243,6 +246,14 @@ export default function ProductDetailPage() {
     }
   };
 
+  if (!isValidId) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <p className="text-text-secondary">Product not found.</p>
+      </div>
+    );
+  }
+
   if (!itemData) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
@@ -434,8 +445,8 @@ export default function ProductDetailPage() {
 
           {/* Buy button */}
           {item.sourceUrl && (
-            <Link
-              href={item.sourceUrl}
+            <a
+              href={item.sourceUrl.startsWith('http') ? item.sourceUrl : `https://${item.sourceUrl}`}
               target="_blank"
               rel="noopener noreferrer"
               className="flex items-center justify-center gap-2 w-full py-3 bg-surface hover:bg-surface-alt border border-border rounded-xl transition-colors"
@@ -443,7 +454,7 @@ export default function ProductDetailPage() {
               <ShoppingBag className="w-5 h-5" />
               <span className="font-medium">View at {item.sourceStore || 'Store'}</span>
               <ExternalLink className="w-4 h-4" />
-            </Link>
+            </a>
           )}
         </div>
       </main>

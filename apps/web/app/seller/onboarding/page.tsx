@@ -41,6 +41,7 @@ export default function SellerOnboardingPage() {
   const [logoPreview, setLogoPreview] = useState<string | null>(null);
   const [contactEmail, setContactEmail] = useState('');
   const [contactPhone, setContactPhone] = useState('');
+  const [websiteUrl, setWebsiteUrl] = useState('');
 
   // Check if user already has a seller profile
   const existingSeller = useQuery(api.sellers.queries.getCurrentSeller);
@@ -51,6 +52,7 @@ export default function SellerOnboardingPage() {
 
   // Mutations
   const createSeller = useMutation(api.sellers.mutations.createSeller);
+  const updateWebsiteUrl = useMutation(api.sellers.mutations.updateWebsiteUrl);
   const generateUploadUrl = useMutation(api.sellers.mutations.generateUploadUrl);
 
   // Redirect if already a seller
@@ -175,6 +177,10 @@ export default function SellerOnboardingPage() {
         contactEmail: contactEmail.trim() || undefined,
         contactPhone: contactPhone.trim() || undefined,
       });
+
+      if (websiteUrl.trim()) {
+        await updateWebsiteUrl({ websiteUrl: websiteUrl.trim() });
+      }
 
       toast.success('Welcome to Nima! Your store is ready.');
       router.push('/seller');
@@ -328,6 +334,21 @@ export default function SellerOnboardingPage() {
                     className="h-12"
                   />
                 </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="websiteUrl">Website URL (Optional)</Label>
+                  <Input
+                    id="websiteUrl"
+                    type="url"
+                    placeholder="https://yourshop.com"
+                    value={websiteUrl}
+                    onChange={(e) => setWebsiteUrl(e.target.value)}
+                    className="h-12"
+                  />
+                  <p className="text-xs text-muted-foreground">
+                    Used as the source URL when bulk uploading products.
+                  </p>
+                </div>
               </div>
             </motion.div>
           )}
@@ -469,6 +490,11 @@ export default function SellerOnboardingPage() {
                     {contactPhone && (
                       <p className="text-sm">
                         <span className="text-muted-foreground">Phone:</span> {contactPhone}
+                      </p>
+                    )}
+                    {websiteUrl && (
+                      <p className="text-sm">
+                        <span className="text-muted-foreground">Website:</span> {websiteUrl}
                       </p>
                     )}
                   </div>

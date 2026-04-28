@@ -1,6 +1,8 @@
 'use client';
 
 import { useParams, useRouter } from 'next/navigation';
+import { useQuery } from 'convex/react';
+import { api } from '@/convex/_generated/api';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { ChevronLeft } from 'lucide-react';
@@ -11,6 +13,7 @@ export default function EditProductPage() {
   const params = useParams();
   const router = useRouter();
   const itemId = params.itemId as Id<'items'>;
+  const seller = useQuery(api.sellers.queries.getCurrentSeller);
 
   const handleSuccess = () => {
     router.push('/seller/products');
@@ -44,6 +47,8 @@ export default function EditProductPage() {
             itemId={itemId}
             onSuccess={handleSuccess}
             onCancel={handleCancel}
+            watermarkEnabled={seller?.watermarkEnabled ?? false}
+            shopName={seller?.shopName ?? ''}
           />
         </CardContent>
       </Card>

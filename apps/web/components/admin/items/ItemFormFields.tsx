@@ -150,7 +150,7 @@ export function ItemFormFields({ data, onChange, disabled }: ItemFormFieldsProps
             <Label>Category *</Label>
             <Select
               value={data.category}
-              onValueChange={(value) => onChange({ ...data, category: value as Category })}
+              onValueChange={(value) => value && onChange({ ...data, category: value as Category })}
               disabled={disabled}
             >
               <SelectTrigger>

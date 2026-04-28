@@ -18,13 +18,15 @@ import {
   SheetHeader,
   SheetTitle,
 } from '@/components/ui/sheet';
-import { Plus, Sparkles, Package } from 'lucide-react';
+import { Plus, Sparkles, Package, Images } from 'lucide-react';
 import { ItemsTable, CreateItemForm, EditItemForm, AIGenerateForm } from '@/components/admin/items';
+import { BulkUploadModal } from '@/components/shared/BulkUploadModal';
 import type { Id } from '@/convex/_generated/dataModel';
 
 export default function ItemsPage() {
   const [showCreateDialog, setShowCreateDialog] = useState(false);
   const [showAIDialog, setShowAIDialog] = useState(false);
+  const [showBulkUpload, setShowBulkUpload] = useState(false);
   const [editItemId, setEditItemId] = useState<Id<'items'> | null>(null);
   const [activeTab, setActiveTab] = useState<'all' | 'create'>('all');
 
@@ -122,6 +124,38 @@ export default function ItemsPage() {
                 </CardDescription>
               </CardHeader>
             </Card>
+
+            {/* Bulk Upload — Nima catalog */}
+            <Card
+              className="cursor-pointer hover:border-primary/50 transition-colors"
+              onClick={() => setShowBulkUpload(true)}
+            >
+              <CardHeader>
+                <div className="h-12 w-12 rounded-lg bg-primary/10 flex items-center justify-center mb-2">
+                  <Images className="h-6 w-6 text-primary" />
+                </div>
+                <CardTitle>Bulk Upload</CardTitle>
+                <CardDescription>
+                  Drop up to 99 images. Set names and prices, then AI fills in descriptions, tags, and categories automatically. Items go to the Nima catalog.
+                </CardDescription>
+              </CardHeader>
+            </Card>
+
+            {/* Bulk Upload for Seller */}
+            <Card
+              className="cursor-pointer hover:border-primary/50 transition-colors"
+              onClick={() => setShowBulkUpload(true)}
+            >
+              <CardHeader>
+                <div className="h-12 w-12 rounded-lg bg-primary/10 flex items-center justify-center mb-2">
+                  <Images className="h-6 w-6 text-primary" />
+                </div>
+                <CardTitle>Upload for Seller</CardTitle>
+                <CardDescription>
+                  Bulk upload images on behalf of a specific seller. Select the seller to respect their tier limits and store info.
+                </CardDescription>
+              </CardHeader>
+            </Card>
           </div>
         </TabsContent>
       </Tabs>
@@ -183,6 +217,14 @@ export default function ItemsPage() {
           )}
         </SheetContent>
       </Sheet>
+
+      {/* Bulk Upload Modal */}
+      <BulkUploadModal
+        open={showBulkUpload}
+        onOpenChange={setShowBulkUpload}
+        mode="admin"
+        onComplete={() => setActiveTab('all')}
+      />
     </div>
   );
 }

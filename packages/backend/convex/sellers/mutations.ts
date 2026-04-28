@@ -137,7 +137,7 @@ export const createSeller = mutation({
       contactPhone: args.contactPhone,
       verificationStatus: 'pending',
       isActive: true,
-      tryOnCredits: 25,
+      tryOnCredits: 100,
       createdAt: now,
       updatedAt: now,
     });
@@ -155,6 +155,32 @@ export const createSeller = mutation({
 /**
  * Update seller profile
  */
+export const updateWebsiteUrl = mutation({
+  args: {
+    websiteUrl: v.string(),
+  },
+  returns: v.id('sellers'),
+  handler: async (
+    ctx: MutationCtx,
+    args: { websiteUrl: string }
+  ): Promise<Id<'sellers'>> => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) throw new Error('Not authenticated');
+    const user = await ctx.db
+      .query('users')
+      .withIndex('by_workos_user_id', (q) => q.eq('workosUserId', identity.subject))
+      .unique();
+    if (!user) throw new Error('User not found');
+    const seller = await ctx.db
+      .query('sellers')
+      .withIndex('by_user', (q) => q.eq('userId', user._id))
+      .unique();
+    if (!seller) throw new Error('Seller profile not found');
+    await ctx.db.patch(seller._id, { websiteUrl: args.websiteUrl, updatedAt: Date.now() });
+    return seller._id;
+  },
+});
+
 export const updateSeller = mutation({
   args: {
     shopName: v.optional(v.string()),
@@ -163,6 +189,7 @@ export const updateSeller = mutation({
     bannerStorageId: v.optional(v.id('_storage')),
     contactEmail: v.optional(v.string()),
     contactPhone: v.optional(v.string()),
+    websiteUrl: v.optional(v.string()),
   },
   returns: v.id('sellers'),
   handler: async (
@@ -174,6 +201,7 @@ export const updateSeller = mutation({
       bannerStorageId?: Id<'_storage'>;
       contactEmail?: string;
       contactPhone?: string;
+      websiteUrl?: string;
     }
   ): Promise<Id<'sellers'>> => {
     const identity = await ctx.auth.getUserIdentity();
@@ -209,9 +237,39 @@ export const updateSeller = mutation({
     if (args.bannerStorageId !== undefined) updates.bannerStorageId = args.bannerStorageId;
     if (args.contactEmail !== undefined) updates.contactEmail = args.contactEmail;
     if (args.contactPhone !== undefined) updates.contactPhone = args.contactPhone;
+    if (args.websiteUrl !== undefined) updates.websiteUrl = args.websiteUrl;
 
     await ctx.db.patch(seller._id, updates);
     return seller._id;
+  },
+});
+
+export const toggleWatermark = mutation({
+  args: {
+    enabled: v.boolean(),
+  },
+  returns: v.null(),
+  handler: async (
+    ctx: MutationCtx,
+    args: { enabled: boolean }
+  ): Promise<null> => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) throw new Error('Not authenticated');
+
+    const user = await ctx.db
+      .query('users')
+      .withIndex('by_workos_user_id', (q) => q.eq('workosUserId', identity.subject))
+      .unique();
+    if (!user) throw new Error('User not found');
+
+    const seller = await ctx.db
+      .query('sellers')
+      .withIndex('by_user', (q) => q.eq('userId', user._id))
+      .unique();
+    if (!seller) throw new Error('Seller profile not found');
+
+    await ctx.db.patch(seller._id, { watermarkEnabled: args.enabled, updatedAt: Date.now() });
+    return null;
   },
 });
 
@@ -249,6 +307,8 @@ export const createSellerProduct = mutation({
     inStock: v.optional(v.boolean()),
     stockQuantity: v.optional(v.number()),
     sku: v.optional(v.string()),
+    sourceStore: v.optional(v.string()),
+    sourceUrl: v.optional(v.string()),
   },
   returns: v.id('items'),
   handler: async (
@@ -272,6 +332,8 @@ export const createSellerProduct = mutation({
       inStock?: boolean;
       stockQuantity?: number;
       sku?: string;
+      sourceStore?: string;
+      sourceUrl?: string;
     }
   ): Promise<Id<'items'>> => {
     const identity = await ctx.auth.getUserIdentity();
@@ -339,6 +401,8 @@ export const createSellerProduct = mutation({
       season: args.season,
       inStock: args.inStock ?? true,
       stockQuantity: args.stockQuantity,
+      sourceStore: args.sourceStore,
+      sourceUrl: args.sourceUrl,
       isActive: true,
       isFeatured: false,
       viewCount: 0,
@@ -786,6 +850,52 @@ export const deleteItemImage = mutation({
       }
     }
 
+    return true;
+  },
+});
+
+export const deleteSellerProduct = mutation({
+  args: {
+    itemId: v.id('items'),
+  },
+  returns: v.boolean(),
+  handler: async (
+    ctx: MutationCtx,
+    args: { itemId: Id<'items'> }
+  ): Promise<boolean> => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) throw new Error('Not authenticated');
+
+    const user = await ctx.db
+      .query('users')
+      .withIndex('by_workos_user_id', (q) => q.eq('workosUserId', identity.subject))
+      .unique();
+    if (!user) throw new Error('User not found');
+
+    const seller = await ctx.db
+      .query('sellers')
+      .withIndex('by_user', (q) => q.eq('userId', user._id))
+      .unique();
+    if (!seller) throw new Error('Seller profile not found');
+
+    const item = await ctx.db.get(args.itemId);
+    if (!item) throw new Error('Item not found');
+    if (item.sellerId !== seller._id) throw new Error('You do not have permission to delete this item');
+
+    // Delete all images and their storage files
+    const images = await ctx.db
+      .query('item_images')
+      .withIndex('by_item', (q) => q.eq('itemId', args.itemId))
+      .collect();
+
+    for (const image of images) {
+      if (image.storageId) {
+        await ctx.storage.delete(image.storageId);
+      }
+      await ctx.db.delete(image._id);
+    }
+
+    await ctx.db.delete(args.itemId);
     return true;
   },
 });

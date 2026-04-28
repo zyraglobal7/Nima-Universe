@@ -745,6 +745,7 @@ export default defineSchema({
     // Contact
     contactEmail: v.optional(v.string()),
     contactPhone: v.optional(v.string()),
+    websiteUrl: v.optional(v.string()),
 
     // Verification
     verificationStatus: v.union(
@@ -765,6 +766,9 @@ export default defineSchema({
     // Status
     isActive: v.boolean(),
     tryOnCredits: v.optional(v.number()),
+
+    // Settings
+    watermarkEnabled: v.optional(v.boolean()),
 
     // Timestamps
     createdAt: v.number(),

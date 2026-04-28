@@ -2,6 +2,7 @@
 
 import { useState, useCallback } from 'react';
 import { useMutation, useAction } from 'convex/react';
+import { applyWatermarkToBlob } from '@/lib/utils/watermark';
 import { api } from '@/convex/_generated/api';
 import type { Id } from '@/convex/_generated/dataModel';
 import { Button } from '@/components/ui/button';
@@ -18,17 +19,20 @@ type ImageType = 'front' | 'back' | 'side' | 'detail' | 'model' | 'flat_lay';
 interface UploadedImage {
   storageId: Id<'_storage'>;
   url: string;
+  file?: File;
   imageType: ImageType;
 }
 
 interface AIGenerateFormProps {
   onSuccess?: (itemId: Id<'items'>) => void;
   onCancel?: () => void;
+  watermarkEnabled?: boolean;
+  shopName?: string;
 }
 
 type Step = 'upload' | 'ghost_mannequin' | 'generating' | 'review';
 
-export function AIGenerateForm({ onSuccess, onCancel }: AIGenerateFormProps) {
+export function AIGenerateForm({ onSuccess, onCancel, watermarkEnabled = false, shopName = '' }: AIGenerateFormProps) {
   const [step, setStep] = useState<Step>('upload');
   const [uploadedImage, setUploadedImage] = useState<UploadedImage | null>(null);
   const [formData, setFormData] = useState<ItemFormData>(defaultFormData);
@@ -114,7 +118,7 @@ export function AIGenerateForm({ onSuccess, onCancel }: AIGenerateFormProps) {
 
         if (!url) throw new Error('Failed to get image URL');
 
-        let activeImage: UploadedImage = { storageId, url, imageType: 'front' };
+        let activeImage: UploadedImage = { storageId, url, imageType: 'front', file };
         setUploadedImage(activeImage);
         toast.success('Image uploaded');
 
@@ -128,6 +132,7 @@ export function AIGenerateForm({ onSuccess, onCancel }: AIGenerateFormProps) {
                 storageId: gmResult.storageId as Id<'_storage'>,
                 url: gmResult.url,
                 imageType: 'front',
+                file: activeImage.file, // preserve original file for watermarking
               };
               setUploadedImage(activeImage);
             } else {
@@ -197,6 +202,27 @@ export function AIGenerateForm({ onSuccess, onCancel }: AIGenerateFormProps) {
 
     setIsSubmitting(true);
     try {
+      let finalStorageId = uploadedImage.storageId;
+
+      if (watermarkEnabled && shopName) {
+        // Fetch the current processed image (ghost mannequin result or original)
+        // so the watermark is applied on top of whatever AI has already done.
+        const imageResponse = await fetch(uploadedImage.url);
+        const imageBlob = await imageResponse.blob();
+        const wmBlob = await applyWatermarkToBlob(imageBlob, shopName);
+        toast.info('Watermark applied');
+        const uploadUrl = await generateUploadUrl({});
+        const wmResponse = await fetch(uploadUrl, {
+          method: 'POST',
+          headers: { 'Content-Type': wmBlob.type },
+          body: wmBlob,
+        });
+        if (wmResponse.ok) {
+          const { storageId: wmStorageId } = await wmResponse.json();
+          finalStorageId = wmStorageId;
+        }
+      }
+
       const itemId = await createProduct({
         name: formData.name.trim(),
         brand: formData.brand.trim() || undefined,
@@ -219,7 +245,7 @@ export function AIGenerateForm({ onSuccess, onCancel }: AIGenerateFormProps) {
 
       await addItemImage({
         itemId,
-        storageId: uploadedImage.storageId,
+        storageId: finalStorageId,
         imageType: uploadedImage.imageType,
         isPrimary: true,
         sortOrder: 0,
