@@ -379,8 +379,6 @@ export default function AdminSellersPage() {
                     <TableRow
                       className="cursor-pointer hover:bg-muted/40 transition-colors"
                       onClick={() => toggleRowExpand(seller._id)}
-                      className="cursor-pointer hover:bg-muted/40 transition-colors"
-                      onClick={() => toggleRowExpand(seller._id)}
                     >
                       <TableCell className="pl-6 font-medium">
                         <div className="flex items-center gap-2">
