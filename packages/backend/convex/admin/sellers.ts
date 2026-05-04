@@ -160,6 +160,74 @@ export const overrideSellerTier = mutation({
 });
 
 /**
+ * Admin: verify a seller
+ */
+export const verifySeller = mutation({
+  args: {
+    sellerId: v.id('sellers'),
+  },
+  returns: v.null(),
+  handler: async (
+    ctx: MutationCtx,
+    args: { sellerId: Id<'sellers'> }
+  ): Promise<null> => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) throw new Error('Not authenticated');
+
+    const user = await ctx.db
+      .query('users')
+      .withIndex('by_workos_user_id', (q) => q.eq('workosUserId', identity.subject))
+      .unique();
+    if (!user || user.role !== 'admin') throw new Error('Not authorized');
+
+    const seller = await ctx.db.get(args.sellerId);
+    if (!seller) throw new Error('Seller not found');
+
+    await ctx.db.patch(args.sellerId, {
+      verificationStatus: 'verified',
+      updatedAt: Date.now(),
+    });
+
+    return null;
+  },
+});
+
+/**
+ * Admin: reject a seller
+ */
+export const rejectSeller = mutation({
+  args: {
+    sellerId: v.id('sellers'),
+    reason: v.optional(v.string()),
+  },
+  returns: v.null(),
+  handler: async (
+    ctx: MutationCtx,
+    args: { sellerId: Id<'sellers'>; reason?: string }
+  ): Promise<null> => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) throw new Error('Not authenticated');
+
+    const user = await ctx.db
+      .query('users')
+      .withIndex('by_workos_user_id', (q) => q.eq('workosUserId', identity.subject))
+      .unique();
+    if (!user || user.role !== 'admin') throw new Error('Not authorized');
+
+    const seller = await ctx.db.get(args.sellerId);
+    if (!seller) throw new Error('Seller not found');
+
+    await ctx.db.patch(args.sellerId, {
+      verificationStatus: 'rejected',
+      verificationNotes: args.reason,
+      updatedAt: Date.now(),
+    });
+
+    return null;
+  },
+});
+
+/**
  * Admin: cancel a seller's active subscription
  * immediate=true downgrades to basic immediately; false lets them keep access until periodEnd
  */

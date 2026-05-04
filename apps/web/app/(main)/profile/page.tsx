@@ -2,10 +2,10 @@
 
 import { useState, useEffect } from 'react';
 import { motion} from 'framer-motion';
-import { Sparkles, User, Camera, LogOut, ChevronRight, Save, Loader2, Users, ImageIcon, Heart, Check, Pencil, X, Moon, Sun, Trash2, Settings, Mail, Lock, Zap } from 'lucide-react';
+import { Sparkles, User, Camera, LogOut, ChevronRight, Save, Loader2, Users, ImageIcon, Heart, Check, Pencil, X, Moon, Sun, Trash2, Settings, Mail, Lock, Zap, Gift, Copy, CheckCheck } from 'lucide-react';
 import Link from 'next/link';
 import Image from 'next/image';
-import { useQuery, useMutation } from 'convex/react';
+import { useQuery, useMutation, useAction } from 'convex/react';
 import { api } from '@/convex/_generated/api';
 
 import { FriendsList } from '@/components/friends/FriendsList';
@@ -59,15 +59,24 @@ const currencies = ['USD', 'EUR', 'GBP', 'KES', 'NGN'];
 
 export default function ProfilePage() {
   const currentUser = useQuery(api.users.queries.getCurrentUser);
+  const referralCode = useQuery(api.referrals.queries.getMyReferralCode);
+  const referralCredits = useQuery(api.referrals.queries.getMyReferralCredits);
+  const generateReferralCode = useMutation(api.referrals.mutations.generateReferralCode);
   const { theme, setTheme } = useTheme();
+  const [copiedCode, setCopiedCode] = useState(false);
+  const [isGeneratingCode, setIsGeneratingCode] = useState(false);
   
   // Mutations
   const updateProfile = useMutation(api.users.mutations.updateProfile);
   const updateStylePreferences = useMutation(api.users.mutations.updateStylePreferences);
   const updateSizePreferences = useMutation(api.users.mutations.updateSizePreferences);
   const updateBudgetPreferences = useMutation(api.users.mutations.updateBudgetPreferences);
+  const deleteMyAccount = useAction(api.users.actions.deleteMyAccount);
 
   // Local state for editing
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
+  const [isDeletingAccount, setIsDeletingAccount] = useState(false);
+  const [deleteConfirmText, setDeleteConfirmText] = useState('');
   const [isEditingProfile, setIsEditingProfile] = useState(false);
   const [isEditingStyle, setIsEditingStyle] = useState(false);
   const [selectedOutfits, setSelectedOutfits] = useState<string[]>([]);
@@ -109,6 +118,19 @@ export default function ProfilePage() {
   useEffect(() => {
     trackProfilePageViewed();
   }, []);
+
+  const handleDeleteAccount = async () => {
+    if (deleteConfirmText.toLowerCase() !== 'delete') return;
+    setIsDeletingAccount(true);
+    try {
+      await deleteMyAccount({});
+      // Data is gone — sign out
+      window.location.href = '/sign-out';
+    } catch {
+      toast.error('Failed to delete account. Please try again.');
+      setIsDeletingAccount(false);
+    }
+  };
 
   const toggleOutfit = (outfitId: string) => {
     setSelectedOutfits((prev) =>
@@ -188,6 +210,26 @@ export default function ProfilePage() {
       toast.error('Failed to update budget preferences');
     } finally {
       setIsSavingBudget(false);
+    }
+  };
+
+  const handleCopyReferralLink = async () => {
+    const code = referralCode;
+    if (!code) return;
+    const link = `${window.location.origin}?ref=${code}`;
+    await navigator.clipboard.writeText(link);
+    setCopiedCode(true);
+    setTimeout(() => setCopiedCode(false), 2000);
+  };
+
+  const handleGenerateCode = async () => {
+    setIsGeneratingCode(true);
+    try {
+      await generateReferralCode();
+    } catch {
+      toast.error('Failed to generate referral code');
+    } finally {
+      setIsGeneratingCode(false);
     }
   };
 
@@ -342,6 +384,56 @@ export default function ProfilePage() {
                 <ChevronRight className="w-5 h-5 text-muted-foreground" />
               </Link>
 
+              {/* Referral */}
+              <div className="p-4 bg-surface rounded-xl border border-border space-y-3">
+                <div className="flex items-center gap-3 mb-1">
+                  <Gift className="w-5 h-5 text-primary" />
+                  <div>
+                    <p className="font-medium text-foreground">Refer a Friend</p>
+                    <p className="text-xs text-muted-foreground">
+                      Earn KES 500 off every time a friend joins &amp; tries on
+                    </p>
+                  </div>
+                </div>
+
+                {referralCode ? (
+                  <div className="space-y-2">
+                    <div className="flex items-center gap-2 p-2 bg-surface-alt rounded-lg border border-border">
+                      <code className="flex-1 text-sm font-mono text-foreground tracking-widest">
+                        {referralCode}
+                      </code>
+                      <button
+                        onClick={handleCopyReferralLink}
+                        className="flex items-center gap-1 px-2 py-1 rounded-md bg-primary/10 hover:bg-primary/20 text-primary text-xs font-medium transition-colors"
+                      >
+                        {copiedCode ? <CheckCheck className="w-3.5 h-3.5" /> : <Copy className="w-3.5 h-3.5" />}
+                        {copiedCode ? 'Copied!' : 'Copy link'}
+                      </button>
+                    </div>
+
+                    {referralCredits && referralCredits.totalKes > 0 && (
+                      <div className="flex items-center gap-2 p-2 bg-green-50 dark:bg-green-950/30 rounded-lg border border-green-200 dark:border-green-800">
+                        <span className="text-green-700 dark:text-green-400 text-sm font-medium">
+                          KES {referralCredits.totalKes.toLocaleString()} credit available
+                        </span>
+                        <span className="text-green-600 dark:text-green-500 text-xs">
+                          · auto-applied at checkout
+                        </span>
+                      </div>
+                    )}
+                  </div>
+                ) : (
+                  <button
+                    onClick={handleGenerateCode}
+                    disabled={isGeneratingCode}
+                    className="w-full py-2 rounded-lg bg-primary/10 hover:bg-primary/20 text-primary text-sm font-medium transition-colors flex items-center justify-center gap-2"
+                  >
+                    {isGeneratingCode ? <Loader2 className="w-4 h-4 animate-spin" /> : <Gift className="w-4 h-4" />}
+                    Get my referral link
+                  </button>
+                )}
+              </div>
+
               {/* My Orders */}
               <Link
                 href="/orders"
@@ -404,7 +496,7 @@ export default function ProfilePage() {
                     </div>
                     <ChevronRight className="w-4 h-4 text-muted-foreground" />
                   </a>
-                  <a 
+                  <a
                     href="/sign-out"
                     className="w-full flex items-center justify-between p-3 rounded-lg hover:bg-destructive/10 text-destructive transition-colors"
                   >
@@ -417,8 +509,67 @@ export default function ProfilePage() {
                     </div>
                     <ChevronRight className="w-4 h-4" />
                   </a>
+                  <button
+                    onClick={() => { setDeleteConfirmText(''); setIsDeleteDialogOpen(true); }}
+                    className="w-full flex items-center justify-between p-3 rounded-lg hover:bg-destructive/10 text-destructive transition-colors"
+                  >
+                    <div className="flex items-center gap-3">
+                      <Trash2 className="w-4 h-4" />
+                      <div className="text-left">
+                        <p className="text-sm">Delete Account</p>
+                        <p className="text-xs opacity-70">Permanently remove your account and all data</p>
+                      </div>
+                    </div>
+                    <ChevronRight className="w-4 h-4" />
+                  </button>
                 </div>
               </div>
+
+              {/* Delete Account Dialog */}
+              <Dialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
+                <DialogContent className="sm:max-w-md">
+                  <DialogHeader>
+                    <DialogTitle className="text-destructive flex items-center gap-2">
+                      <Trash2 className="w-5 h-5" />
+                      Delete your account
+                    </DialogTitle>
+                    <DialogDescription>
+                      This will permanently delete your account and all associated data — looks, try-ons, orders, referrals, and more. This cannot be undone.
+                    </DialogDescription>
+                  </DialogHeader>
+                  <div className="space-y-4 pt-2">
+                    <div>
+                      <Label htmlFor="delete-confirm" className="text-sm font-medium">
+                        Type <span className="font-mono font-bold">delete</span> to confirm
+                      </Label>
+                      <Input
+                        id="delete-confirm"
+                        value={deleteConfirmText}
+                        onChange={(e) => setDeleteConfirmText(e.target.value)}
+                        placeholder="delete"
+                        className="mt-1.5"
+                        autoComplete="off"
+                      />
+                    </div>
+                    <div className="flex gap-3 justify-end">
+                      <Button variant="outline" onClick={() => setIsDeleteDialogOpen(false)} disabled={isDeletingAccount}>
+                        Cancel
+                      </Button>
+                      <Button
+                        variant="destructive"
+                        onClick={handleDeleteAccount}
+                        disabled={deleteConfirmText.toLowerCase() !== 'delete' || isDeletingAccount}
+                      >
+                        {isDeletingAccount ? (
+                          <><Loader2 className="w-4 h-4 animate-spin mr-2" />Deleting…</>
+                        ) : (
+                          'Delete my account'
+                        )}
+                      </Button>
+                    </div>
+                  </div>
+                </DialogContent>
+              </Dialog>
 
               {/* Try-on Usage */}
               <div className="p-4 bg-surface rounded-xl border border-border">

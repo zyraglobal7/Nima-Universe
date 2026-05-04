@@ -5,6 +5,9 @@
   },
   "submit": {
     "production": {
+      "android": {
+        "track": "production"
+      },
       "ios": {
         "appleId": "dev@shopnima.ai",
         "appleTeamId": "XRG632J9HC",

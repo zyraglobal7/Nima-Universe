@@ -436,3 +436,88 @@ export const getMostSavedLookDetails = query({
   },
 });
 
+
+// ============================================
+// ADMIN QUERIES
+// ============================================
+
+/**
+ * Search users by name or email and return their wrapped status for a given year.
+ * Admin-only.
+ */
+export const searchUsersWrapped = query({
+  args: {
+    searchTerm: v.string(),
+    year: v.number(),
+  },
+  returns: v.array(
+    v.object({
+      userId: v.id('users'),
+      name: v.string(),
+      email: v.string(),
+      hasWrapped: v.boolean(),
+      totalLooksSaved: v.union(v.number(), v.null()),
+      totalTryOns: v.union(v.number(), v.null()),
+      styleEra: v.union(v.string(), v.null()),
+      createdAt: v.union(v.number(), v.null()),
+    })
+  ),
+  handler: async (
+    ctx: QueryCtx,
+    args: { searchTerm: string; year: number }
+  ): Promise<Array<{
+    userId: Id<'users'>;
+    name: string;
+    email: string;
+    hasWrapped: boolean;
+    totalLooksSaved: number | null;
+    totalTryOns: number | null;
+    styleEra: string | null;
+    createdAt: number | null;
+  }>> => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) throw new Error('Not authenticated');
+    const adminUser = await ctx.db
+      .query('users')
+      .withIndex('by_workos_user_id', (q) => q.eq('workosUserId', identity.subject))
+      .unique();
+    if (!adminUser || adminUser.role !== 'admin') throw new Error('Not authorized');
+
+    const term = args.searchTerm.trim().toLowerCase();
+    if (!term || term.length < 2) return [];
+
+    const allUsers = await ctx.db.query('users').collect();
+    const matched = allUsers
+      .filter((u) => {
+        const fullName = `${u.firstName ?? ''} ${u.lastName ?? ''}`.toLowerCase();
+        return (
+          u.email.toLowerCase().includes(term) ||
+          fullName.includes(term) ||
+          (u.username ?? '').toLowerCase().includes(term)
+        );
+      })
+      .slice(0, 15);
+
+    const results = await Promise.all(
+      matched.map(async (u) => {
+        const wrapped = await ctx.db
+          .query('user_wrapped')
+          .withIndex('by_user_and_year', (q) => q.eq('userId', u._id).eq('year', args.year))
+          .unique();
+        const name = [u.firstName, u.lastName].filter(Boolean).join(' ') || u.username || u.email;
+        return {
+          userId: u._id,
+          name,
+          email: u.email,
+          hasWrapped: wrapped !== null,
+          totalLooksSaved: wrapped?.totalLooksSaved ?? null,
+          totalTryOns: wrapped?.totalTryOns ?? null,
+          styleEra: wrapped?.styleEra ?? null,
+          createdAt: wrapped?.createdAt ?? null,
+        };
+      })
+    );
+
+    return results;
+  },
+});

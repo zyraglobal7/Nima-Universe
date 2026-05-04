@@ -225,6 +225,8 @@ interface AnalyticsDateContextType {
   setDateRange: (range: DateRange | undefined) => void;
   startTimestamp: number;
   endTimestamp: number;
+  exportFn: (() => void) | null;
+  setExportFn: (fn: (() => void) | null) => void;
 }
 
 const AnalyticsDateContext = React.createContext<AnalyticsDateContextType | undefined>(
@@ -238,6 +240,12 @@ export function AnalyticsDateProvider({ children }: { children: React.ReactNode 
       to: endOfDay(new Date()),
     };
   });
+  const [exportFn, setExportFnRaw] = React.useState<(() => void) | null>(null);
+
+  // useState setter wraps functions in a thunk; unwrap with the callback form
+  const setExportFn = React.useCallback((fn: (() => void) | null) => {
+    setExportFnRaw(() => fn);
+  }, []);
 
   const startTimestamp = dateRange?.from?.getTime() ?? startOfDay(subDays(new Date(), 29)).getTime();
   const endTimestamp = dateRange?.to?.getTime() ?? endOfDay(new Date()).getTime();
@@ -249,6 +257,8 @@ export function AnalyticsDateProvider({ children }: { children: React.ReactNode 
         setDateRange,
         startTimestamp,
         endTimestamp,
+        exportFn,
+        setExportFn,
       }}
     >
       {children}
@@ -262,6 +272,43 @@ export function useAnalyticsDate() {
     throw new Error('useAnalyticsDate must be used within AnalyticsDateProvider');
   }
   return context;
+}
+
+/**
+ * Register a CSV export function for the current analytics page.
+ * The layout header picks this up and shows a Download CSV button.
+ * Clears automatically when the page unmounts.
+ */
+export function useRegisterExport(fn: (() => void) | null) {
+  const { setExportFn } = useAnalyticsDate();
+  React.useEffect(() => {
+    setExportFn(fn);
+    return () => setExportFn(null);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [fn !== null]);
+}
+
+/** Build and trigger a CSV file download in the browser. */
+export function downloadCsv(filename: string, rows: Record<string, unknown>[]) {
+  if (!rows.length) return;
+  const headers = Object.keys(rows[0]);
+  const escape = (v: unknown) => {
+    const s = v == null ? '' : String(v);
+    return s.includes(',') || s.includes('"') || s.includes('\n')
+      ? `"${s.replace(/"/g, '""')}"`
+      : s;
+  };
+  const csv = [
+    headers.join(','),
+    ...rows.map((row) => headers.map((h) => escape(row[h])).join(',')),
+  ].join('\n');
+  const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = filename;
+  a.click();
+  URL.revokeObjectURL(url);
 }
 
 /** Read-only label shown to Basic sellers who have no date-based analytics */

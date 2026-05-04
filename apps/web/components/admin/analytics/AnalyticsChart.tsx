@@ -412,7 +412,7 @@ export function StatsGrid({
 export interface DataTableColumn<T> {
   key: keyof T;
   header: string;
-  format?: (value: T[keyof T]) => string;
+  format?: (value: T[keyof T]) => React.ReactNode;
 }
 
 export function DataTable<T extends Record<string, unknown>>({

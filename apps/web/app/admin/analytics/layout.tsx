@@ -2,7 +2,7 @@
 
 import { usePathname } from 'next/navigation';
 import Link from 'next/link';
-import { ArrowLeft } from 'lucide-react';
+import { ArrowLeft, Download } from 'lucide-react';
 
 import { Button } from '@/components/ui/button';
 import {
@@ -13,7 +13,7 @@ import {
 
 function AnalyticsHeader() {
   const pathname = usePathname();
-  const { dateRange, setDateRange } = useAnalyticsDate();
+  const { dateRange, setDateRange, exportFn } = useAnalyticsDate();
   const isDetailPage = pathname !== '/admin/analytics';
 
   // Get the current page name from the path
@@ -46,7 +46,15 @@ function AnalyticsHeader() {
           )}
         </div>
       </div>
-      <DateRangePicker dateRange={dateRange} onDateRangeChange={setDateRange} />
+      <div className="flex items-center gap-2">
+        {exportFn && (
+          <Button variant="outline" size="sm" onClick={exportFn}>
+            <Download className="h-4 w-4 mr-2" />
+            Export CSV
+          </Button>
+        )}
+        <DateRangePicker dateRange={dateRange} onDateRangeChange={setDateRange} />
+      </div>
     </div>
   );
 }

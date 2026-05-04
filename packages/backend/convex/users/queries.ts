@@ -155,6 +155,7 @@ export const getCurrentUser = query({
         country: v.string(),
         phone: v.string(),
       })),
+      referralCode: v.optional(v.string()),
       createdAt: v.number(),
       updatedAt: v.number(),
     }),
@@ -255,6 +256,7 @@ export const getUser = query({
         country: v.string(),
         phone: v.string(),
       })),
+      referralCode: v.optional(v.string()),
       createdAt: v.number(),
       updatedAt: v.number(),
     }),
@@ -344,6 +346,7 @@ export const getUserByWorkosId = query({
         country: v.string(),
         phone: v.string(),
       })),
+      referralCode: v.optional(v.string()),
       createdAt: v.number(),
       updatedAt: v.number(),
     }),
@@ -659,5 +662,24 @@ export const getUserById = internalQuery({
   returns: v.any(),
   handler: async (ctx: QueryCtx, args: { userId: Id<"users"> }): Promise<Doc<"users"> | null> => {
     return await ctx.db.get(args.userId);
+  },
+});
+
+/**
+ * Internal: resolve a WorkOS user ID to our Convex user ID.
+ * Used by the deleteMyAccount action before it can call the internal mutation.
+ */
+export const getUserIdByWorkosId = internalQuery({
+  args: { workosUserId: v.string() },
+  returns: v.union(v.id('users'), v.null()),
+  handler: async (
+    ctx: QueryCtx,
+    args: { workosUserId: string }
+  ): Promise<Id<'users'> | null> => {
+    const user = await ctx.db
+      .query('users')
+      .withIndex('by_workos_user_id', (q) => q.eq('workosUserId', args.workosUserId))
+      .unique();
+    return user?._id ?? null;
   },
 });

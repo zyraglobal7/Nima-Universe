@@ -1165,3 +1165,72 @@ export const updateStyleProfile = mutation({
   },
 });
 
+/**
+ * Delete all data for a user across every table, then delete the user record.
+ * Called from the deleteMyAccount action after WorkOS deletion succeeds.
+ */
+export const deleteUserData = internalMutation({
+  args: { userId: v.id('users') },
+  returns: v.null(),
+  handler: async (ctx: MutationCtx, args: { userId: Id<'users'> }): Promise<null> => {
+    const { userId } = args;
+
+    const deleteAll = async <T extends { _id: Id<any> }>(rows: T[]) => {
+      await Promise.all(rows.map((r) => ctx.db.delete(r._id)));
+    };
+
+    // Simple single-index tables
+    await deleteAll(await ctx.db.query('push_tokens').withIndex('by_user', (q) => q.eq('userId', userId)).collect());
+    await deleteAll(await ctx.db.query('cart_items').withIndex('by_user', (q) => q.eq('userId', userId)).collect());
+    await deleteAll(await ctx.db.query('look_interactions').withIndex('by_user', (q) => q.eq('userId', userId)).collect());
+    await deleteAll(await ctx.db.query('item_likes').withIndex('by_user', (q) => q.eq('userId', userId)).collect());
+    await deleteAll(await ctx.db.query('lookbook_items').withIndex('by_user', (q) => q.eq('userId', userId)).collect());
+    await deleteAll(await ctx.db.query('lookbooks').withIndex('by_user', (q) => q.eq('userId', userId)).collect());
+    await deleteAll(await ctx.db.query('item_try_ons').withIndex('by_user', (q) => q.eq('userId', userId)).collect());
+    await deleteAll(await ctx.db.query('look_images').withIndex('by_user', (q) => q.eq('userId', userId)).collect());
+    await deleteAll(await ctx.db.query('user_images').withIndex('by_user', (q) => q.eq('userId', userId)).collect());
+    await deleteAll(await ctx.db.query('credit_purchases').withIndex('by_user', (q) => q.eq('userId', userId)).collect());
+    await deleteAll(await ctx.db.query('messages').withIndex('by_user', (q) => q.eq('userId', userId)).collect());
+    await deleteAll(await ctx.db.query('threads').withIndex('by_user', (q) => q.eq('userId', userId)).collect());
+    await deleteAll(await ctx.db.query('user_wrapped').withIndex('by_user_and_year', (q) => q.eq('userId', userId)).collect());
+
+    // Two-sided relationship tables
+    await deleteAll(await ctx.db.query('direct_messages').withIndex('by_sender', (q) => q.eq('senderId', userId)).collect());
+    await deleteAll(await ctx.db.query('direct_messages').withIndex('by_recipient', (q) => q.eq('recipientId', userId)).collect());
+    await deleteAll(await ctx.db.query('referrals').withIndex('by_referrer', (q) => q.eq('referrerId', userId)).collect());
+    await deleteAll(await ctx.db.query('referrals').withIndex('by_referee', (q) => q.eq('refereeId', userId)).collect());
+    await deleteAll(await ctx.db.query('friendships').withIndex('by_requester', (q) => q.eq('requesterId', userId)).collect());
+    await deleteAll(await ctx.db.query('friendships').withIndex('by_addressee', (q) => q.eq('addresseeId', userId)).collect());
+
+    // Looks (creatorUserId)
+    const userLooks = await ctx.db.query('looks').withIndex('by_user_and_save_status', (q) => q.eq('creatorUserId', userId)).collect();
+    await deleteAll(userLooks);
+
+    // Orders + order_items
+    const userOrders = await ctx.db.query('orders').withIndex('by_user', (q) => q.eq('userId', userId)).collect();
+    for (const order of userOrders) {
+      const orderItems = await ctx.db.query('order_items').withIndex('by_order', (q) => q.eq('orderId', order._id)).collect();
+      await deleteAll(orderItems);
+    }
+    await deleteAll(userOrders);
+
+    // Seller account + its data
+    const seller = await ctx.db.query('sellers').withIndex('by_user', (q) => q.eq('userId', userId)).unique();
+    if (seller) {
+      await deleteAll(await ctx.db.query('seller_subscriptions').withIndex('by_seller', (q) => q.eq('sellerId', seller._id)).collect());
+      const sellerItems = await ctx.db.query('items').withIndex('by_seller', (q) => q.eq('sellerId', seller._id)).collect();
+      for (const item of sellerItems) {
+        const itemImages = await ctx.db.query('item_images').withIndex('by_item', (q) => q.eq('itemId', item._id)).collect();
+        await deleteAll(itemImages);
+      }
+      await deleteAll(sellerItems);
+      await ctx.db.delete(seller._id);
+    }
+
+    // Finally, delete the user record
+    await ctx.db.delete(userId);
+
+    return null;
+  },
+});
+

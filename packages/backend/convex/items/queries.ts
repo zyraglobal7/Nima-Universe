@@ -277,6 +277,19 @@ export const getItemWithImage = query({
         v.null()
       ),
       imageUrl: v.union(v.string(), v.null()),
+      seller: v.union(
+        v.object({
+          _id: v.id('sellers'),
+          shopName: v.string(),
+          slug: v.string(),
+          verificationStatus: v.union(
+            v.literal('pending'),
+            v.literal('verified'),
+            v.literal('rejected')
+          ),
+        }),
+        v.null()
+      ),
     }),
     v.null()
   ),
@@ -287,6 +300,7 @@ export const getItemWithImage = query({
     item: Doc<'items'>;
     primaryImage: Doc<'item_images'> | null;
     imageUrl: string | null;
+    seller: { _id: Id<'sellers'>; shopName: string; slug: string; verificationStatus: 'pending' | 'verified' | 'rejected' } | null;
   } | null> => {
     const item = await ctx.db.get(args.itemId);
     if (!item || !item.isActive) {
@@ -307,10 +321,24 @@ export const getItemWithImage = query({
       }
     }
 
+    let seller: { _id: Id<'sellers'>; shopName: string; slug: string; verificationStatus: 'pending' | 'verified' | 'rejected' } | null = null;
+    if (item.sellerId) {
+      const sellerDoc = await ctx.db.get(item.sellerId);
+      if (sellerDoc) {
+        seller = {
+          _id: sellerDoc._id,
+          shopName: sellerDoc.shopName,
+          slug: sellerDoc.slug,
+          verificationStatus: sellerDoc.verificationStatus,
+        };
+      }
+    }
+
     return {
       item,
       primaryImage,
       imageUrl,
+      seller,
     };
   },
 });
@@ -946,6 +974,94 @@ export const searchItemsByAttributes = query({
     );
 
     return results;
+  },
+});
+
+/**
+ * Get all active items for a seller with their primary image URLs
+ * Used on the public /shop/[slug] storefront page
+ */
+export const getSellerItemsWithImages = query({
+  args: {
+    sellerId: v.id('sellers'),
+    limit: v.optional(v.number()),
+  },
+  returns: v.array(
+    v.object({
+      _id: v.id('items'),
+      _creationTime: v.number(),
+      name: v.string(),
+      brand: v.optional(v.string()),
+      price: v.number(),
+      currency: v.string(),
+      originalPrice: v.optional(v.number()),
+      category: categoryValidator,
+      inStock: v.boolean(),
+      primaryImageUrl: v.union(v.string(), v.null()),
+      colors: v.array(v.string()),
+      sizes: v.array(v.string()),
+    })
+  ),
+  handler: async (
+    ctx: QueryCtx,
+    args: { sellerId: Id<'sellers'>; limit?: number }
+  ): Promise<
+    Array<{
+      _id: Id<'items'>;
+      _creationTime: number;
+      name: string;
+      brand?: string;
+      price: number;
+      currency: string;
+      originalPrice?: number;
+      category: 'top' | 'bottom' | 'dress' | 'outfit' | 'outerwear' | 'shoes' | 'accessory' | 'bag' | 'jewelry' | 'swimwear';
+      inStock: boolean;
+      primaryImageUrl: string | null;
+      colors: string[];
+      sizes: string[];
+    }>
+  > => {
+    const limit = Math.min(args.limit ?? 60, 100);
+
+    const items = await ctx.db
+      .query('items')
+      .withIndex('by_seller_and_active', (q) =>
+        q.eq('sellerId', args.sellerId).eq('isActive', true)
+      )
+      .take(limit);
+
+    return Promise.all(
+      items.map(async (item) => {
+        const primaryImage = await ctx.db
+          .query('item_images')
+          .withIndex('by_item_and_primary', (q) =>
+            q.eq('itemId', item._id).eq('isPrimary', true)
+          )
+          .unique();
+
+        let primaryImageUrl: string | null = null;
+        if (primaryImage?.storageId) {
+          primaryImageUrl = await ctx.storage.getUrl(primaryImage.storageId);
+        } else if (primaryImage?.externalUrl) {
+          primaryImageUrl = primaryImage.externalUrl;
+        }
+
+        return {
+          _id: item._id,
+          _creationTime: item._creationTime,
+          name: item.name,
+          brand: item.brand,
+          price: item.price,
+          currency: item.currency,
+          originalPrice: item.originalPrice,
+          category: item.category,
+          inStock: item.inStock,
+          primaryImageUrl,
+          colors: item.colors,
+          sizes: item.sizes,
+        };
+      })
+    );
   },
 });
 

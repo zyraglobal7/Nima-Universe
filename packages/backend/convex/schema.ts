@@ -80,10 +80,33 @@ export default defineSchema({
       country: v.string(),
       phone: v.string(),
     })),
+
+    // Referral code (generated on demand)
+    referralCode: v.optional(v.string()),
   })
     .index('by_workos_user_id', ['workosUserId'])
     .index('by_email', ['email'])
-    .index('by_username', ['username']),
+    .index('by_username', ['username'])
+    .index('by_referral_code', ['referralCode']),
+
+  /**
+   * referrals - Tracks referral relationships and credit rewards
+   * Referrer shares code; referee applies it; credit is granted on first completed try-on
+   */
+  referrals: defineTable({
+    referrerId: v.id('users'),     // user who shared the code
+    refereeId: v.id('users'),      // new user who used the code
+    referralCode: v.string(),      // code that was used
+    status: v.union(v.literal('pending'), v.literal('credited')),
+    creditAmountKes: v.number(),   // 500
+    creditedAt: v.optional(v.number()),
+    expiresAt: v.optional(v.number()), // creditedAt + 14 days in ms
+    usedAt: v.optional(v.number()),    // set when applied at checkout
+    createdAt: v.number(),
+  })
+    .index('by_referrer', ['referrerId'])
+    .index('by_referee', ['refereeId'])
+    .index('by_code', ['referralCode']),
 
   /**
    * user_images - User photos for virtual try-on

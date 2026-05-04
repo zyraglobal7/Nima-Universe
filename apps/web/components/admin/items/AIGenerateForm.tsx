@@ -55,7 +55,7 @@ export function AIGenerateForm({ onSuccess, onCancel }: AIGenerateFormProps) {
             description: result.data.description,
             category: result.data.category,
             subcategory: result.data.subcategory || '',
-            gender: result.data.suggestedGender,
+            gender: result.data.suggestedGender || 'unisex',
             price: result.data.suggestedPriceRange
               ? String(Math.round((result.data.suggestedPriceRange.min + result.data.suggestedPriceRange.max) / 2))
               : '',

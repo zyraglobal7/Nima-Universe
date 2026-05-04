@@ -733,6 +733,61 @@ export const getSellerSubscriptionsAdmin = query({
  * Admin: recent subscription events across all sellers (last 50), enriched with shop name.
  * Used in the admin billing page events feed.
  */
+/**
+ * Admin: get all sellers with verificationStatus === 'pending'
+ */
+export const getPendingSellers = query({
+  args: {},
+  returns: v.array(v.object({
+    _id: v.id('sellers'),
+    shopName: v.string(),
+    slug: v.string(),
+    contactEmail: v.optional(v.string()),
+    contactPhone: v.optional(v.string()),
+    websiteUrl: v.optional(v.string()),
+    createdAt: v.number(),
+    isActive: v.boolean(),
+  })),
+  handler: async (
+    ctx: QueryCtx,
+    _args: Record<string, never>
+  ): Promise<Array<{
+    _id: Id<'sellers'>;
+    shopName: string;
+    slug: string;
+    contactEmail?: string;
+    contactPhone?: string;
+    websiteUrl?: string;
+    createdAt: number;
+    isActive: boolean;
+  }>> => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) throw new Error('Not authenticated');
+
+    const user = await ctx.db
+      .query('users')
+      .withIndex('by_workos_user_id', (q) => q.eq('workosUserId', identity.subject))
+      .unique();
+    if (!user || user.role !== 'admin') throw new Error('Not authorized');
+
+    const sellers = await ctx.db
+      .query('sellers')
+      .withIndex('by_verification_status', (q) => q.eq('verificationStatus', 'pending'))
+      .take(100);
+
+    return sellers.map((seller) => ({
+      _id: seller._id,
+      shopName: seller.shopName,
+      slug: seller.slug,
+      contactEmail: seller.contactEmail,
+      contactPhone: seller.contactPhone,
+      websiteUrl: seller.websiteUrl,
+      createdAt: seller.createdAt,
+      isActive: seller.isActive,
+    }));
+  },
+});
+
 export const getRecentSubscriptionEvents = query({
   args: {},
   returns: v.array(v.object({

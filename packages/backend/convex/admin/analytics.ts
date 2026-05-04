@@ -59,6 +59,21 @@ export const getAnalyticsSummary = query({
       saves: v.number(),
       trend: v.array(v.object({ date: v.string(), count: v.number() })),
     }),
+    credits: v.object({
+      totalAttempts: v.number(),
+      completed: v.number(),
+      totalRevenueKes: v.number(),
+      conversionRate: v.number(),
+      trend: v.array(v.object({ date: v.string(), count: v.number() })),
+    }),
+    referrals: v.object({
+      total: v.number(),
+      credited: v.number(),
+      pending: v.number(),
+      totalKesAwarded: v.number(),
+      totalKesUsed: v.number(),
+      trend: v.array(v.object({ date: v.string(), count: v.number() })),
+    }),
   }),
   handler: async (
     ctx: QueryCtx,
@@ -105,6 +120,21 @@ export const getAnalyticsSummary = query({
       total: number;
       loves: number;
       saves: number;
+      trend: Array<{ date: string; count: number }>;
+    };
+    credits: {
+      totalAttempts: number;
+      completed: number;
+      totalRevenueKes: number;
+      conversionRate: number;
+      trend: Array<{ date: string; count: number }>;
+    };
+    referrals: {
+      total: number;
+      credited: number;
+      pending: number;
+      totalKesAwarded: number;
+      totalKesUsed: number;
       trend: Array<{ date: string; count: number }>;
     };
   }> => {
@@ -220,6 +250,30 @@ export const getAnalyticsSummary = query({
       (m) => m.createdAt >= startDate && m.createdAt <= endDate
     );
 
+    // Credits
+    const allCreditPurchases = await ctx.db.query('credit_purchases').collect();
+    const periodCreditPurchases = allCreditPurchases.filter(
+      (p) => p.createdAt >= startDate && p.createdAt <= endDate
+    );
+    const completedPurchases = periodCreditPurchases.filter((p) => p.status === 'completed');
+    const creditsTotalRevenue = completedPurchases.reduce((sum, p) => sum + p.priceKes, 0);
+    const creditsConversionRate =
+      periodCreditPurchases.length > 0
+        ? Math.round((completedPurchases.length / periodCreditPurchases.length) * 100)
+        : 0;
+
+    // Referrals
+    const allReferrals = await ctx.db.query('referrals').collect();
+    const periodReferrals = allReferrals.filter(
+      (r) => r.createdAt >= startDate && r.createdAt <= endDate
+    );
+    const creditedReferrals = periodReferrals.filter((r) => r.status === 'credited');
+    const pendingReferrals = periodReferrals.filter((r) => r.status === 'pending');
+    const referralKesAwarded = creditedReferrals.reduce((sum, r) => sum + r.creditAmountKes, 0);
+    const referralKesUsed = creditedReferrals
+      .filter((r) => r.usedAt !== undefined)
+      .reduce((sum, r) => sum + r.creditAmountKes, 0);
+
     // Look Interactions
     const allInteractions = await ctx.db.query('look_interactions').collect();
     const periodInteractions = allInteractions.filter(
@@ -300,6 +354,29 @@ export const getAnalyticsSummary = query({
         saves: interactionSaves.length,
         trend: generateTrend(
           periodInteractions.map((i) => ({ createdAt: i.createdAt })),
+          startDate,
+          endDate
+        ),
+      },
+      credits: {
+        totalAttempts: periodCreditPurchases.length,
+        completed: completedPurchases.length,
+        totalRevenueKes: creditsTotalRevenue,
+        conversionRate: creditsConversionRate,
+        trend: generateTrend(
+          completedPurchases.map((p) => ({ createdAt: p.createdAt })),
+          startDate,
+          endDate
+        ),
+      },
+      referrals: {
+        total: periodReferrals.length,
+        credited: creditedReferrals.length,
+        pending: pendingReferrals.length,
+        totalKesAwarded: referralKesAwarded,
+        totalKesUsed: referralKesUsed,
+        trend: generateTrend(
+          periodReferrals.map((r) => ({ createdAt: r.createdAt })),
           startDate,
           endDate
         ),
@@ -1676,6 +1753,468 @@ export const getConnectConversionAnalytics = query({
       trend,
       topProductsByCart,
       topProductsByPurchase,
+    };
+  },
+});
+
+// =============================================================================
+// CREDITS ANALYTICS
+// =============================================================================
+
+export const getCreditAnalytics = query({
+  args: {
+    startDate: v.number(),
+    endDate: v.number(),
+  },
+  returns: v.object({
+    totalAttempts: v.number(),
+    completed: v.number(),
+    failed: v.number(),
+    pending: v.number(),
+    totalRevenueKes: v.number(),
+    avgPurchaseKes: v.number(),
+    conversionRate: v.number(),
+    byPackage: v.array(
+      v.object({ credits: v.number(), count: v.number(), revenueKes: v.number() })
+    ),
+    byStatus: v.array(v.object({ status: v.string(), count: v.number() })),
+    trend: v.array(v.object({ date: v.string(), count: v.number() })),
+    revenueTrend: v.array(v.object({ date: v.string(), count: v.number() })),
+    topBuyers: v.array(
+      v.object({
+        userId: v.string(),
+        displayName: v.string(),
+        email: v.string(),
+        purchases: v.number(),
+        totalCredits: v.number(),
+        totalSpentKes: v.number(),
+      })
+    ),
+    recentAttempts: v.array(
+      v.object({
+        id: v.string(),
+        userId: v.string(),
+        displayName: v.string(),
+        email: v.string(),
+        creditAmount: v.number(),
+        priceKes: v.number(),
+        status: v.string(),
+        phoneNumber: v.string(),
+        createdAt: v.number(),
+        failureReason: v.optional(v.string()),
+      })
+    ),
+  }),
+  handler: async (
+    ctx: QueryCtx,
+    args: { startDate: number; endDate: number }
+  ): Promise<{
+    totalAttempts: number;
+    completed: number;
+    failed: number;
+    pending: number;
+    totalRevenueKes: number;
+    avgPurchaseKes: number;
+    conversionRate: number;
+    byPackage: Array<{ credits: number; count: number; revenueKes: number }>;
+    byStatus: Array<{ status: string; count: number }>;
+    trend: Array<{ date: string; count: number }>;
+    revenueTrend: Array<{ date: string; count: number }>;
+    topBuyers: Array<{
+      userId: string;
+      displayName: string;
+      email: string;
+      purchases: number;
+      totalCredits: number;
+      totalSpentKes: number;
+    }>;
+    recentAttempts: Array<{
+      id: string;
+      userId: string;
+      displayName: string;
+      email: string;
+      creditAmount: number;
+      priceKes: number;
+      status: string;
+      phoneNumber: string;
+      createdAt: number;
+      failureReason?: string;
+    }>;
+  }> => {
+    const { startDate, endDate } = args;
+
+    const allPurchases = await ctx.db.query('credit_purchases').collect();
+    const periodPurchases = allPurchases.filter(
+      (p) => p.createdAt >= startDate && p.createdAt <= endDate
+    );
+
+    const completedPurchases = periodPurchases.filter((p) => p.status === 'completed');
+    const failedPurchases = periodPurchases.filter((p) => p.status === 'failed');
+    const pendingPurchases = periodPurchases.filter((p) => p.status === 'pending');
+
+    const totalRevenueKes = completedPurchases.reduce((sum, p) => sum + p.priceKes, 0);
+    const avgPurchaseKes =
+      completedPurchases.length > 0
+        ? Math.round(totalRevenueKes / completedPurchases.length)
+        : 0;
+    const conversionRate =
+      periodPurchases.length > 0
+        ? Math.round((completedPurchases.length / periodPurchases.length) * 100)
+        : 0;
+
+    // By package (grouped on creditAmount)
+    const packageMap: Record<number, { count: number; revenueKes: number }> = {};
+    for (const p of periodPurchases) {
+      if (!packageMap[p.creditAmount]) {
+        packageMap[p.creditAmount] = { count: 0, revenueKes: 0 };
+      }
+      packageMap[p.creditAmount].count++;
+      if (p.status === 'completed') {
+        packageMap[p.creditAmount].revenueKes += p.priceKes;
+      }
+    }
+    const byPackage = Object.entries(packageMap)
+      .map(([credits, data]) => ({ credits: Number(credits), ...data }))
+      .sort((a, b) => a.credits - b.credits);
+
+    // By status
+    const statusMap: Record<string, number> = {};
+    for (const p of periodPurchases) {
+      statusMap[p.status] = (statusMap[p.status] || 0) + 1;
+    }
+    const byStatus = Object.entries(statusMap).map(([status, count]) => ({ status, count }));
+
+    // Daily trends
+    const dayMs = 24 * 60 * 60 * 1000;
+    const days = Math.ceil((endDate - startDate) / dayMs);
+    const trendMap: Record<string, number> = {};
+    const revenueTrendMap: Record<string, number> = {};
+
+    for (let i = 0; i <= days; i++) {
+      const dateStr = new Date(startDate + i * dayMs).toISOString().split('T')[0];
+      trendMap[dateStr] = 0;
+      revenueTrendMap[dateStr] = 0;
+    }
+
+    for (const p of periodPurchases) {
+      const dateStr = new Date(p.createdAt).toISOString().split('T')[0];
+      if (trendMap[dateStr] !== undefined) {
+        trendMap[dateStr]++;
+      }
+      if (p.status === 'completed' && revenueTrendMap[dateStr] !== undefined) {
+        revenueTrendMap[dateStr] += p.priceKes;
+      }
+    }
+
+    const trend = Object.entries(trendMap)
+      .map(([date, count]) => ({ date, count }))
+      .sort((a, b) => a.date.localeCompare(b.date));
+
+    const revenueTrend = Object.entries(revenueTrendMap)
+      .map(([date, count]) => ({ date, count }))
+      .sort((a, b) => a.date.localeCompare(b.date));
+
+    // Top buyers (from completed purchases in period)
+    const buyerMap: Record<string, { purchases: number; totalCredits: number; totalSpentKes: number }> = {};
+    for (const p of completedPurchases) {
+      const uid = p.userId;
+      if (!buyerMap[uid]) {
+        buyerMap[uid] = { purchases: 0, totalCredits: 0, totalSpentKes: 0 };
+      }
+      buyerMap[uid].purchases++;
+      buyerMap[uid].totalCredits += p.creditAmount;
+      buyerMap[uid].totalSpentKes += p.priceKes;
+    }
+
+    const topBuyerIds = Object.entries(buyerMap)
+      .sort((a, b) => b[1].totalSpentKes - a[1].totalSpentKes)
+      .slice(0, 10);
+
+    const topBuyers = await Promise.all(
+      topBuyerIds.map(async ([userId, stats]) => {
+        const user = await ctx.db.get(userId as Id<'users'>);
+        const displayName =
+          user
+            ? [user.firstName, user.lastName].filter(Boolean).join(' ') ||
+              user.username ||
+              user.email
+            : userId;
+        return {
+          userId,
+          displayName,
+          email: user?.email ?? '',
+          ...stats,
+        };
+      })
+    );
+
+    // Recent attempts (last 50 across all statuses)
+    const recentRaw = [...periodPurchases]
+      .sort((a, b) => b.createdAt - a.createdAt)
+      .slice(0, 50);
+
+    const recentAttempts = await Promise.all(
+      recentRaw.map(async (p) => {
+        const user = await ctx.db.get(p.userId);
+        const displayName =
+          user
+            ? [user.firstName, user.lastName].filter(Boolean).join(' ') ||
+              user.username ||
+              user.email
+            : p.userId;
+        return {
+          id: p._id,
+          userId: p.userId,
+          displayName,
+          email: user?.email ?? '',
+          creditAmount: p.creditAmount,
+          priceKes: p.priceKes,
+          status: p.status,
+          phoneNumber: p.phoneNumber,
+          createdAt: p.createdAt,
+          failureReason: p.failureReason,
+        };
+      })
+    );
+
+    return {
+      totalAttempts: periodPurchases.length,
+      completed: completedPurchases.length,
+      failed: failedPurchases.length,
+      pending: pendingPurchases.length,
+      totalRevenueKes,
+      avgPurchaseKes,
+      conversionRate,
+      byPackage,
+      byStatus,
+      trend,
+      revenueTrend,
+      topBuyers,
+      recentAttempts,
+    };
+  },
+});
+
+// =============================================================================
+// REFERRAL ANALYTICS (Detail Page)
+// =============================================================================
+
+export const getReferralAnalytics = query({
+  args: {
+    startDate: v.number(),
+    endDate: v.number(),
+  },
+  returns: v.object({
+    summary: v.object({
+      total: v.number(),
+      credited: v.number(),
+      pending: v.number(),
+      expired: v.number(),
+      usedAtCheckout: v.number(),
+      totalKesAwarded: v.number(),
+      totalKesUsed: v.number(),
+      totalKesExpired: v.number(),
+    }),
+    topReferrers: v.array(v.object({
+      referrerId: v.id('users'),
+      name: v.string(),
+      email: v.string(),
+      referralCode: v.string(),
+      totalReferrals: v.number(),
+      creditedReferrals: v.number(),
+      totalKesEarned: v.number(),
+      totalKesUsed: v.number(),
+    })),
+    rows: v.array(v.object({
+      _id: v.id('referrals'),
+      referrerName: v.string(),
+      referrerEmail: v.string(),
+      refereeName: v.string(),
+      refereeEmail: v.string(),
+      referralCode: v.string(),
+      status: v.union(v.literal('pending'), v.literal('credited')),
+      creditAmountKes: v.number(),
+      creditedAt: v.union(v.number(), v.null()),
+      expiresAt: v.union(v.number(), v.null()),
+      usedAt: v.union(v.number(), v.null()),
+      createdAt: v.number(),
+    })),
+  }),
+  handler: async (
+    ctx: QueryCtx,
+    args: { startDate: number; endDate: number }
+  ): Promise<{
+    summary: {
+      total: number;
+      credited: number;
+      pending: number;
+      expired: number;
+      usedAtCheckout: number;
+      totalKesAwarded: number;
+      totalKesUsed: number;
+      totalKesExpired: number;
+    };
+    topReferrers: Array<{
+      referrerId: Id<'users'>;
+      name: string;
+      email: string;
+      referralCode: string;
+      totalReferrals: number;
+      creditedReferrals: number;
+      totalKesEarned: number;
+      totalKesUsed: number;
+    }>;
+    rows: Array<{
+      _id: Id<'referrals'>;
+      referrerName: string;
+      referrerEmail: string;
+      refereeName: string;
+      refereeEmail: string;
+      referralCode: string;
+      status: 'pending' | 'credited';
+      creditAmountKes: number;
+      creditedAt: number | null;
+      expiresAt: number | null;
+      usedAt: number | null;
+      createdAt: number;
+    }>;
+  }> => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) throw new Error('Not authenticated');
+    const adminUser = await ctx.db
+      .query('users')
+      .withIndex('by_workos_user_id', (q) => q.eq('workosUserId', identity.subject))
+      .unique();
+    if (!adminUser || adminUser.role !== 'admin') throw new Error('Not authorized');
+
+    const now = Date.now();
+    const allReferrals = await ctx.db.query('referrals').collect();
+    const periodReferrals = allReferrals.filter(
+      (r) => r.createdAt >= args.startDate && r.createdAt <= args.endDate
+    );
+
+    // Fetch all unique user IDs (referrers + referees)
+    const userIds = new Set<Id<'users'>>();
+    for (const r of periodReferrals) {
+      userIds.add(r.referrerId);
+      userIds.add(r.refereeId);
+    }
+    const userMap = new Map<string, { name: string; email: string; referralCode?: string }>();
+    for (const uid of userIds) {
+      const u = await ctx.db.get(uid);
+      if (u) {
+        userMap.set(uid, {
+          name: [u.firstName, u.lastName].filter(Boolean).join(' ') || u.username || u.email,
+          email: u.email,
+          referralCode: u.referralCode,
+        });
+      }
+    }
+
+    // Summary stats
+    const credited = periodReferrals.filter((r) => r.status === 'credited');
+    const pending = periodReferrals.filter((r) => r.status === 'pending');
+    const expired = credited.filter(
+      (r) => r.usedAt === undefined && r.expiresAt !== undefined && r.expiresAt <= now
+    );
+    const usedAtCheckout = credited.filter((r) => r.usedAt !== undefined);
+    const totalKesAwarded = credited.reduce((s, r) => s + r.creditAmountKes, 0);
+    const totalKesUsed = usedAtCheckout.reduce((s, r) => s + r.creditAmountKes, 0);
+    const totalKesExpired = expired.reduce((s, r) => s + r.creditAmountKes, 0);
+
+    // Top referrers (across full history, not just period — so leaderboard is meaningful)
+    const referrerMap = new Map<string, {
+      referrerId: Id<'users'>;
+      totalReferrals: number;
+      creditedReferrals: number;
+      totalKesEarned: number;
+      totalKesUsed: number;
+    }>();
+    for (const r of allReferrals) {
+      const key = r.referrerId;
+      const existing = referrerMap.get(key) ?? {
+        referrerId: r.referrerId,
+        totalReferrals: 0,
+        creditedReferrals: 0,
+        totalKesEarned: 0,
+        totalKesUsed: 0,
+      };
+      existing.totalReferrals++;
+      if (r.status === 'credited') {
+        existing.creditedReferrals++;
+        existing.totalKesEarned += r.creditAmountKes;
+        if (r.usedAt !== undefined) existing.totalKesUsed += r.creditAmountKes;
+      }
+      referrerMap.set(key, existing);
+    }
+
+    // Fetch any referrers not already in userMap
+    for (const [uid] of referrerMap) {
+      if (!userMap.has(uid)) {
+        const u = await ctx.db.get(uid as Id<'users'>);
+        if (u) {
+          userMap.set(uid, {
+            name: [u.firstName, u.lastName].filter(Boolean).join(' ') || u.username || u.email,
+            email: u.email,
+            referralCode: u.referralCode,
+          });
+        }
+      }
+    }
+
+    const topReferrers = Array.from(referrerMap.values())
+      .sort((a, b) => b.totalKesEarned - a.totalKesEarned)
+      .slice(0, 20)
+      .map((entry) => {
+        const u = userMap.get(entry.referrerId) ?? { name: 'Unknown', email: '', referralCode: '' };
+        return {
+          referrerId: entry.referrerId,
+          name: u.name,
+          email: u.email,
+          referralCode: u.referralCode ?? '',
+          totalReferrals: entry.totalReferrals,
+          creditedReferrals: entry.creditedReferrals,
+          totalKesEarned: entry.totalKesEarned,
+          totalKesUsed: entry.totalKesUsed,
+        };
+      });
+
+    // Row-level detail (period only, newest first)
+    const rows = periodReferrals
+      .sort((a, b) => b.createdAt - a.createdAt)
+      .slice(0, 200)
+      .map((r) => {
+        const referrer = userMap.get(r.referrerId) ?? { name: 'Unknown', email: '' };
+        const referee = userMap.get(r.refereeId) ?? { name: 'Unknown', email: '' };
+        return {
+          _id: r._id,
+          referrerName: referrer.name,
+          referrerEmail: referrer.email,
+          refereeName: referee.name,
+          refereeEmail: referee.email,
+          referralCode: r.referralCode,
+          status: r.status,
+          creditAmountKes: r.creditAmountKes,
+          creditedAt: r.creditedAt ?? null,
+          expiresAt: r.expiresAt ?? null,
+          usedAt: r.usedAt ?? null,
+          createdAt: r.createdAt,
+        };
+      });
+
+    return {
+      summary: {
+        total: periodReferrals.length,
+        credited: credited.length,
+        pending: pending.length,
+        expired: expired.length,
+        usedAtCheckout: usedAtCheckout.length,
+        totalKesAwarded,
+        totalKesUsed,
+        totalKesExpired,
+      },
+      topReferrers,
+      rows,
     };
   },
 });

@@ -170,6 +170,11 @@ export const updateItemTryOnStatus = internalMutation({
         itemTryOnId: args.itemTryOnId,
         itemName,
       });
+
+      // Complete any pending referral for this user on their first successful try-on
+      await ctx.scheduler.runAfter(0, internal.referrals.mutations.completeReferralForUser, {
+        userId: tryOn.userId,
+      });
     }
 
     return null;

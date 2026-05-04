@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { useQuery, useMutation } from 'convex/react';
 import { api } from '@/convex/_generated/api';
+import type { Id } from '@/convex/_generated/dataModel';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -21,6 +22,11 @@ import {
   AlertCircle,
   Loader2,
   Sparkles,
+  Search,
+  RefreshCw,
+  Wand2,
+  ExternalLink,
+  XCircle,
 } from 'lucide-react';
 
 type Theme = 'aurora' | 'geometric' | 'fluid';
@@ -55,14 +61,26 @@ export default function AdminWrappedPage() {
   const [isSaving, setIsSaving] = useState(false);
   const [isGenerating, setIsGenerating] = useState(false);
 
+  // User search state
+  const [userSearch, setUserSearch] = useState('');
+  const [debouncedSearch, setDebouncedSearch] = useState('');
+  const [generatingFor, setGeneratingFor] = useState<string | null>(null);
+  const [deletingFor, setDeletingFor] = useState<string | null>(null);
+
   // Queries
   const settings = useQuery(api.wrapped.queries.getWrappedSettings, { year: selectedYear });
   const stats = useQuery(api.wrapped.queries.getWrappedStats, { year: selectedYear });
+  const userResults = useQuery(
+    api.wrapped.queries.searchUsersWrapped,
+    debouncedSearch.length >= 2 ? { searchTerm: debouncedSearch, year: selectedYear } : 'skip'
+  );
 
   // Mutations
   const upsertSettings = useMutation(api.wrapped.mutations.upsertWrappedSettings);
   const toggleActive = useMutation(api.wrapped.mutations.toggleWrappedActive);
   const triggerGeneration = useMutation(api.wrapped.mutations.triggerManualGeneration);
+  const triggerUserGeneration = useMutation(api.wrapped.mutations.triggerUserWrappedGeneration);
+  const deleteUserWrapped = useMutation(api.wrapped.mutations.deleteUserWrapped);
 
   // Initialize form from settings
   useEffect(() => {
@@ -78,6 +96,36 @@ export default function AdminWrappedPage() {
       setIsActive(false);
     }
   }, [settings, selectedYear]);
+
+  // Debounce the search input
+  useEffect(() => {
+    const t = setTimeout(() => setDebouncedSearch(userSearch), 350);
+    return () => clearTimeout(t);
+  }, [userSearch]);
+
+  const handleGenerateForUser = async (userId: Id<'users'>, name: string) => {
+    setGeneratingFor(userId);
+    try {
+      await triggerUserGeneration({ userId, year: selectedYear });
+      toast.success(`Wrapped generation started for ${name}`);
+    } catch {
+      toast.error('Failed to trigger generation');
+    } finally {
+      setGeneratingFor(null);
+    }
+  };
+
+  const handleDeleteForUser = async (userId: Id<'users'>, name: string) => {
+    setDeletingFor(userId);
+    try {
+      await deleteUserWrapped({ userId, year: selectedYear });
+      toast.success(`Wrapped deleted for ${name} — regenerate when ready`);
+    } catch {
+      toast.error('Failed to delete wrapped');
+    } finally {
+      setDeletingFor(null);
+    }
+  };
 
   const handleSaveSettings = async () => {
     if (!runDate) {
@@ -361,6 +409,136 @@ export default function AdminWrappedPage() {
               </div>
             )}
           </div>
+        </CardContent>
+      </Card>
+
+      {/* User Search Card */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Search className="h-5 w-5" />
+            User Wrapped Lookup
+          </CardTitle>
+          <CardDescription>
+            Search for a specific user to view or trigger their {selectedYear} Wrapped
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="relative">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+            <Input
+              placeholder="Search by name or email…"
+              value={userSearch}
+              onChange={(e) => setUserSearch(e.target.value)}
+              className="pl-9"
+            />
+          </div>
+
+          {debouncedSearch.length >= 2 && (
+            <div className="space-y-2">
+              {userResults === undefined ? (
+                <div className="flex items-center gap-2 text-sm text-muted-foreground py-4 justify-center">
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                  Searching…
+                </div>
+              ) : userResults.length === 0 ? (
+                <p className="text-sm text-muted-foreground text-center py-4">
+                  No users found matching &quot;{debouncedSearch}&quot;
+                </p>
+              ) : (
+                userResults.map((user) => (
+                  <div
+                    key={user.userId}
+                    className="flex items-center justify-between p-3 rounded-lg border border-border bg-surface/50 gap-4"
+                  >
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <p className="text-sm font-medium text-foreground truncate">{user.name}</p>
+                        <p className="text-xs text-muted-foreground truncate">{user.email}</p>
+                      </div>
+                      {user.hasWrapped ? (
+                        <div className="flex items-center gap-3 mt-1 flex-wrap">
+                          <Badge variant="outline" className="text-xs bg-green-50 text-green-700 border-green-200 dark:bg-green-950/30 dark:text-green-400 dark:border-green-800">
+                            <CheckCircle2 className="w-3 h-3 mr-1" />
+                            Has {selectedYear} Wrapped
+                          </Badge>
+                          {user.styleEra && (
+                            <span className="text-xs text-muted-foreground">
+                              <Sparkles className="w-3 h-3 inline mr-0.5" />
+                              {user.styleEra}
+                            </span>
+                          )}
+                          {user.totalLooksSaved !== null && (
+                            <span className="text-xs text-muted-foreground">
+                              {user.totalLooksSaved} looks · {user.totalTryOns} try-ons
+                            </span>
+                          )}
+                        </div>
+                      ) : (
+                        <Badge variant="outline" className="text-xs mt-1 text-muted-foreground">
+                          No Wrapped for {selectedYear}
+                        </Badge>
+                      )}
+                    </div>
+
+                    <div className="flex items-center gap-2 flex-shrink-0">
+                      {user.hasWrapped && (
+                        <>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            asChild
+                            className="h-8 text-xs gap-1"
+                          >
+                            <a href={`/wrapped/${selectedYear}?preview=${user.userId}`} target="_blank" rel="noopener noreferrer">
+                              <ExternalLink className="h-3 w-3" />
+                              Preview
+                            </a>
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="h-8 text-xs gap-1 text-destructive hover:text-destructive"
+                            disabled={deletingFor === user.userId}
+                            onClick={() => handleDeleteForUser(user.userId as Id<'users'>, user.name)}
+                          >
+                            {deletingFor === user.userId ? (
+                              <Loader2 className="h-3 w-3 animate-spin" />
+                            ) : (
+                              <XCircle className="h-3 w-3" />
+                            )}
+                            Delete
+                          </Button>
+                        </>
+                      )}
+                      <Button
+                        size="sm"
+                        variant={user.hasWrapped ? 'outline' : 'default'}
+                        className="h-8 text-xs gap-1"
+                        disabled={generatingFor === user.userId}
+                        onClick={() => handleGenerateForUser(user.userId as Id<'users'>, user.name)}
+                      >
+                        {generatingFor === user.userId ? (
+                          <Loader2 className="h-3 w-3 animate-spin" />
+                        ) : user.hasWrapped ? (
+                          <RefreshCw className="h-3 w-3" />
+                        ) : (
+                          <Wand2 className="h-3 w-3" />
+                        )}
+                        {user.hasWrapped ? 'Regenerate' : 'Generate'}
+                      </Button>
+                    </div>
+                  </div>
+                ))
+              )}
+            </div>
+          )}
+
+          {debouncedSearch.length > 0 && debouncedSearch.length < 2 && (
+            <p className="text-xs text-muted-foreground text-center">
+              Type at least 2 characters to search
+            </p>
+          )}
         </CardContent>
       </Card>
     </div>

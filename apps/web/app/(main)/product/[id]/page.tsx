@@ -17,7 +17,10 @@ import {
   ShoppingCart,
   Bookmark,
   BookmarkCheck,
+  Info,
 } from 'lucide-react';
+import { VerifiedBadge } from '@/components/shared/VerifiedBadge';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import Image from 'next/image';
 import Link from 'next/link';
 import { useQuery, useMutation } from 'convex/react';
@@ -262,7 +265,10 @@ export default function ProductDetailPage() {
     );
   }
 
-  const { item } = itemData;
+  const { item, seller } = itemData;
+  const isVerifiedSeller = seller?.verificationStatus === 'verified';
+  const isNimaCatalog = !item.sellerId;
+  const canPurchase = isVerifiedSeller;
   const currentImage = images[currentImageIndex]?.url || itemData.imageUrl;
 
   return (
@@ -341,7 +347,50 @@ export default function ProductDetailPage() {
             {item.brand && (
               <p className="text-sm font-medium text-muted-foreground uppercase tracking-wider mb-1">{item.brand}</p>
             )}
-            <h1 className="text-2xl font-semibold text-foreground">{item.name}</h1>
+            <div className="flex items-start gap-2">
+              <h1 className="text-2xl font-semibold text-foreground flex-1">{item.name}</h1>
+              <Popover>
+                <PopoverTrigger asChild>
+                  <button className="mt-1 p-0.5 rounded-full hover:bg-surface-alt transition-colors flex-shrink-0" aria-label="Product info">
+                    <Info className="w-4 h-4 text-muted-foreground" />
+                  </button>
+                </PopoverTrigger>
+                <PopoverContent side="left" className="w-72 text-sm space-y-3 p-4">
+                  {isNimaCatalog ? (
+                    <>
+                      <p className="font-semibold text-foreground">Nima Catalog</p>
+                      <p className="text-muted-foreground leading-relaxed">
+                        This item is curated by the Nima team from external stores. You can view it at the original store — it cannot be purchased directly on Nima.
+                      </p>
+                    </>
+                  ) : isVerifiedSeller ? (
+                    <>
+                      <div className="flex items-center gap-2">
+                        <p className="font-semibold text-foreground">Nima Verified Seller</p>
+                        <VerifiedBadge size="sm" showTooltip={false} />
+                      </div>
+                      <p className="text-muted-foreground leading-relaxed">
+                        {seller?.shopName} has been physically verified by the Nima team. We visited their shop to confirm they&apos;re a legitimate, quality seller. You can add this item directly to your cart.
+                      </p>
+                    </>
+                  ) : (
+                    <>
+                      <p className="font-semibold text-foreground">Seller Verification Pending</p>
+                      <p className="text-muted-foreground leading-relaxed">
+                        This seller is awaiting physical verification by the Nima team. Purchase buttons will be available once verified.
+                      </p>
+                    </>
+                  )}
+                </PopoverContent>
+              </Popover>
+            </div>
+            {/* Seller badge */}
+            {seller && (
+              <div className="flex items-center gap-1.5 mt-1">
+                <span className="text-sm text-muted-foreground">{seller.shopName}</span>
+                {isVerifiedSeller && <VerifiedBadge size="sm" />}
+              </div>
+            )}
           </div>
 
           {/* Price */}
@@ -443,17 +492,16 @@ export default function ProductDetailPage() {
             ))}
           </div>
 
-          {/* Buy button */}
-          {item.sourceUrl && (
+          {/* Source link — shown for Nima Catalog and non-verified sellers */}
+          {(isNimaCatalog || !isVerifiedSeller) && item.sourceUrl && (
             <a
               href={item.sourceUrl.startsWith('http') ? item.sourceUrl : `https://${item.sourceUrl}`}
               target="_blank"
               rel="noopener noreferrer"
-              className="flex items-center justify-center gap-2 w-full py-3 bg-surface hover:bg-surface-alt border border-border rounded-xl transition-colors"
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-surface hover:bg-border/50 text-muted-foreground hover:text-foreground rounded-full text-xs font-medium transition-colors duration-200"
             >
-              <ShoppingBag className="w-5 h-5" />
-              <span className="font-medium">View at {item.sourceStore || 'Store'}</span>
-              <ExternalLink className="w-4 h-4" />
+              <span>View at {item.sourceStore || seller?.shopName || 'Store'}</span>
+              <ExternalLink className="w-3 h-3" />
             </a>
           )}
         </div>
@@ -474,38 +522,40 @@ export default function ProductDetailPage() {
             <Heart className={`w-6 h-6 ${isLiked ? 'fill-current' : ''}`} />
           </button>
 
-          {/* Add to Cart button - accessible without trying on */}
-          <button
-            onClick={handleAddToCart}
-            disabled={isAddingToCart || !item.inStock || addedToCart}
-            className={`flex-1 py-4 rounded-xl font-medium text-base transition-all duration-300 flex items-center justify-center gap-2 active:scale-[0.98] disabled:cursor-not-allowed ${
-              addedToCart
-                ? 'bg-green-600 text-white'
-                : 'bg-primary text-primary-foreground hover:bg-primary-hover disabled:opacity-50'
-            }`}
-          >
-            {isAddingToCart ? (
-              <>
-                <Loader2 className="w-5 h-5 animate-spin" />
-                <span>Adding...</span>
-              </>
-            ) : addedToCart ? (
-              <>
-                <Check className="w-5 h-5" />
-                <span>Added to Cart</span>
-              </>
-            ) : !item.inStock ? (
-              <>
-                <AlertCircle className="w-5 h-5" />
-                <span>Out of Stock</span>
-              </>
-            ) : (
-              <>
-                <ShoppingCart className="w-5 h-5" />
-                <span>Add to Cart</span>
-              </>
-            )}
-          </button>
+          {/* Add to Cart — only for verified sellers */}
+          {canPurchase && (
+            <button
+              onClick={handleAddToCart}
+              disabled={isAddingToCart || !item.inStock || addedToCart}
+              className={`flex-1 py-4 rounded-xl font-medium text-base transition-all duration-300 flex items-center justify-center gap-2 active:scale-[0.98] disabled:cursor-not-allowed ${
+                addedToCart
+                  ? 'bg-green-600 text-white'
+                  : 'bg-primary text-primary-foreground hover:bg-primary-hover disabled:opacity-50'
+              }`}
+            >
+              {isAddingToCart ? (
+                <>
+                  <Loader2 className="w-5 h-5 animate-spin" />
+                  <span>Adding...</span>
+                </>
+              ) : addedToCart ? (
+                <>
+                  <Check className="w-5 h-5" />
+                  <span>Added to Cart</span>
+                </>
+              ) : !item.inStock ? (
+                <>
+                  <AlertCircle className="w-5 h-5" />
+                  <span>Out of Stock</span>
+                </>
+              ) : (
+                <>
+                  <ShoppingCart className="w-5 h-5" />
+                  <span>Add to Cart</span>
+                </>
+              )}
+            </button>
+          )}
 
           {/* Try On button */}
           <button
@@ -613,32 +663,34 @@ export default function ProductDetailPage() {
                     <span>{isSaved ? 'Saved' : 'Save Look'}</span>
                   </button>
 
-                  <button
-                    onClick={handleAddToCart}
-                    disabled={isAddingToCart || addedToCart}
-                    className={`flex-1 py-3 rounded-xl font-medium transition-colors flex items-center justify-center gap-2 disabled:opacity-50 ${
-                      addedToCart
-                        ? 'bg-green-600 text-white'
-                        : 'bg-primary text-primary-foreground hover:bg-primary-hover'
-                    }`}
-                  >
-                    {isAddingToCart ? (
-                      <>
-                        <Loader2 className="w-5 h-5 animate-spin" />
-                        Adding...
-                      </>
-                    ) : addedToCart ? (
-                      <>
-                        <Check className="w-5 h-5" />
-                        Added to Cart
-                      </>
-                    ) : (
-                      <>
-                        <ShoppingCart className="w-5 h-5" />
-                        Add to Cart
-                      </>
-                    )}
-                  </button>
+                  {canPurchase && (
+                    <button
+                      onClick={handleAddToCart}
+                      disabled={isAddingToCart || addedToCart}
+                      className={`flex-1 py-3 rounded-xl font-medium transition-colors flex items-center justify-center gap-2 disabled:opacity-50 ${
+                        addedToCart
+                          ? 'bg-green-600 text-white'
+                          : 'bg-primary text-primary-foreground hover:bg-primary-hover'
+                      }`}
+                    >
+                      {isAddingToCart ? (
+                        <>
+                          <Loader2 className="w-5 h-5 animate-spin" />
+                          Adding...
+                        </>
+                      ) : addedToCart ? (
+                        <>
+                          <Check className="w-5 h-5" />
+                          Added to Cart
+                        </>
+                      ) : (
+                        <>
+                          <ShoppingCart className="w-5 h-5" />
+                          Add to Cart
+                        </>
+                      )}
+                    </button>
+                  )}
                 </div>
               </div>
             </motion.div>

@@ -1,4 +1,4 @@
-export { DateRangePicker, DateRangeLocked, AnalyticsDateProvider, useAnalyticsDate } from './DateRangePicker';
+export { DateRangePicker, DateRangeLocked, AnalyticsDateProvider, useAnalyticsDate, useRegisterExport, downloadCsv } from './DateRangePicker';
 export { MetricCard, MetricCardSkeleton } from './MetricCard';
 export { AnalyticsChart, StatsGrid, DataTable } from './AnalyticsChart';
 export type { MetricCardProps } from './MetricCard';

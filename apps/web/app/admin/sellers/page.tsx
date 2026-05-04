@@ -1,9 +1,10 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, Fragment } from 'react';
 import { useQuery, useMutation } from 'convex/react';
 import { api } from '@/convex/_generated/api';
 import type { Id } from '@/convex/_generated/dataModel';
+import Link from 'next/link';
 import {
   Card,
   CardContent,
@@ -52,6 +53,8 @@ import {
   ChevronDown,
   ExternalLink,
   Search,
+  Clock,
+  ChevronRight,
 } from 'lucide-react';
 
 type SellerTier = 'basic' | 'starter' | 'growth' | 'premium';
@@ -208,6 +211,7 @@ export default function AdminSellersPage() {
     tier: tierFilter === 'all' ? undefined : tierFilter,
     limit: 50,
   });
+  const pendingSellers = useQuery(api.admin.queries.getPendingSellers, {});
 
   const overrideSellerTier = useMutation(api.admin.sellers.overrideSellerTier);
   const cancelSellerSubscription = useMutation(api.admin.sellers.cancelSellerSubscription);
@@ -265,6 +269,34 @@ export default function AdminSellersPage() {
           <a href="/admin/billing" className="underline text-primary">Billing</a>.
         </p>
       </div>
+
+      {/* Pending verification card */}
+      <Link href="/admin/sellers/new">
+        <Card className="border-amber-200 bg-amber-50/50 dark:bg-amber-950/20 dark:border-amber-800 hover:shadow-md transition-shadow cursor-pointer">
+          <CardHeader className="pb-3">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className="p-2 bg-amber-100 dark:bg-amber-900/50 rounded-lg">
+                  <Clock className="h-5 w-5 text-amber-600 dark:text-amber-400" />
+                </div>
+                <div>
+                  <CardTitle className="text-amber-900 dark:text-amber-100 text-base">
+                    New Sellers Awaiting Verification
+                  </CardTitle>
+                  <CardDescription className="text-amber-700 dark:text-amber-400 mt-0.5">
+                    {pendingSellers === undefined
+                      ? 'Loading…'
+                      : pendingSellers.length === 0
+                      ? 'No pending sellers'
+                      : `${pendingSellers.length} seller${pendingSellers.length === 1 ? '' : 's'} waiting to be verified`}
+                  </CardDescription>
+                </div>
+              </div>
+              <ChevronRight className="h-5 w-5 text-amber-600 dark:text-amber-400" />
+            </div>
+          </CardHeader>
+        </Card>
+      </Link>
 
       {/* Sellers table card */}
       <Card>
@@ -343,9 +375,10 @@ export default function AdminSellersPage() {
                 </TableRow>
               ) : (
                 filteredSellers.map((seller) => (
-                  <>
+                  <Fragment key={seller._id}>
                     <TableRow
-                      key={seller._id}
+                      className="cursor-pointer hover:bg-muted/40 transition-colors"
+                      onClick={() => toggleRowExpand(seller._id)}
                       className="cursor-pointer hover:bg-muted/40 transition-colors"
                       onClick={() => toggleRowExpand(seller._id)}
                     >
@@ -420,9 +453,9 @@ export default function AdminSellersPage() {
                     </TableRow>
 
                     {expandedRowId === seller._id && (
-                      <SubscriptionHistoryRow key={`history-${seller._id}`} sellerId={seller._id} />
+                      <SubscriptionHistoryRow sellerId={seller._id} />
                     )}
-                  </>
+                  </Fragment>
                 ))
               )}
             </TableBody>
