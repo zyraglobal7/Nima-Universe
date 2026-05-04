@@ -181,7 +181,7 @@ export function ItemFormFields({ data, onChange, disabled }: ItemFormFieldsProps
             <Label>Gender *</Label>
             <Select
               value={data.gender}
-              onValueChange={(value) => onChange({ ...data, gender: value as Gender })}
+              onValueChange={(value) => onChange({ ...data, gender: (value as Gender) || 'unisex' })}
               disabled={disabled}
             >
               <SelectTrigger>

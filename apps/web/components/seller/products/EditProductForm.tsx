@@ -187,7 +187,7 @@ export function EditProductForm({ itemId, onSuccess, onCancel, watermarkEnabled 
         description: formData.description.trim() || undefined,
         category: formData.category,
         subcategory: formData.subcategory.trim() || undefined,
-        gender: formData.gender,
+        gender: formData.gender || 'unisex',
         price: Math.round(parseFloat(formData.price)),
         currency: formData.currency,
         originalPrice: formData.originalPrice

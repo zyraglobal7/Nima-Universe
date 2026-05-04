@@ -126,7 +126,7 @@ export function CreateItemForm({
         description: formData.description.trim() || undefined,
         category: formData.category,
         subcategory: formData.subcategory.trim() || undefined,
-        gender: formData.gender,
+        gender: formData.gender || 'unisex',
         price: Math.round(parseFloat(formData.price)), // Store price as-is (no cents conversion)
         currency: formData.currency,
         originalPrice: formData.originalPrice

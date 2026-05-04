@@ -303,11 +303,11 @@ export const generateWeeklyRecommendationsForAll = internalMutation({
       (u) => u.isActive && (u.styleProfile || (u.stylePreferences ?? []).length > 0)
     );
 
-    for (const user of eligible) {
+    for (let i = 0; i < eligible.length; i++) {
       await ctx.scheduler.runAfter(
-        0,
+        i * 2000, // stagger 2 s apart to avoid saturating the worker pool
         internal.recommendations.mutations.generateWeeklyRecommendations,
-        { userId: user._id }
+        { userId: eligible[i]._id }
       );
     }
 
