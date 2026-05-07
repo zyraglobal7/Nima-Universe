@@ -64,6 +64,14 @@ export default {
       "expo-web-browser",
       "expo-secure-store",
       [
+        "@sentry/react-native/expo",
+        {
+          "url": "https://sentry.io/",
+          "project": "react-native",
+          "organization": "nima-ai"
+        }
+      ],
+      [
         "expo-camera",
         {
           cameraPermission: "Nima uses your camera so you can point at clothing items and instantly see yourself wearing them.",

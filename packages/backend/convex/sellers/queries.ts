@@ -1,4 +1,4 @@
-import { query, QueryCtx } from '../_generated/server';
+import { query, internalQuery, QueryCtx } from '../_generated/server';
 import { v } from 'convex/values';
 import type { Doc, Id } from '../_generated/dataModel';
 import { type SellerTier } from '../types';
@@ -22,6 +22,50 @@ async function getSellerWithTier(ctx: QueryCtx): Promise<(Doc<'sellers'> & { eff
   if (!seller) return null;
   return { ...seller, effectiveTier: (seller.tier ?? 'basic') as SellerTier };
 }
+
+/**
+ * Internal: look up seller + active product count for a given workosUserId.
+ * Used by importScrapedProducts action to check tier limits without circular deps.
+ */
+export const getSellerForImport = internalQuery({
+  args: { workosUserId: v.string() },
+  returns: v.union(
+    v.object({
+      sellerId: v.id('sellers'),
+      tier: v.string(),
+      activeProductCount: v.number(),
+      maxProducts: v.union(v.number(), v.null()),
+    }),
+    v.null()
+  ),
+  handler: async (
+    ctx: QueryCtx,
+    args: { workosUserId: string }
+  ): Promise<{ sellerId: Id<'sellers'>; tier: string; activeProductCount: number; maxProducts: number | null } | null> => {
+    const user = await ctx.db
+      .query('users')
+      .withIndex('by_workos_user_id', (q) => q.eq('workosUserId', args.workosUserId))
+      .unique();
+    if (!user) return null;
+    const seller = await ctx.db
+      .query('sellers')
+      .withIndex('by_user', (q) => q.eq('userId', user._id))
+      .unique();
+    if (!seller) return null;
+    const tier = (seller.tier ?? 'basic') as SellerTier;
+    const { maxProducts } = await getTierConfig(ctx, tier);
+    const activeItems = await ctx.db
+      .query('items')
+      .withIndex('by_seller_and_active', (q) => q.eq('sellerId', seller._id).eq('isActive', true))
+      .collect();
+    return {
+      sellerId: seller._id,
+      tier,
+      activeProductCount: activeItems.length,
+      maxProducts,
+    };
+  },
+});
 
 /**
  * Check if the current user is a seller

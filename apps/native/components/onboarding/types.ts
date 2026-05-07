@@ -1,5 +1,6 @@
 export type BudgetRange = 'low' | 'mid' | 'premium';
 export type Gender = 'male' | 'female' | 'prefer-not-to-say';
+export type ShoeSizeUnit = 'EU' | 'UK' | 'US';
 
 /** Uploaded image with per-photo validation state */
 export interface ValidatedImage {
@@ -13,11 +14,21 @@ export interface ValidatedImage {
 
 export interface OnboardingFormData {
   gender: Gender | '';
+  age?: string;
   stylePreferences: string[];
   occasions: string[];
   budgetRange: BudgetRange;
   uploadedImages: ValidatedImage[];
   onboardingToken: string;
+  shirtSize?: string;
+  waistSize?: string;
+  height?: string;
+  heightUnit?: 'cm' | 'ft';
+  shoeSize?: string;
+  shoeSizeUnit?: ShoeSizeUnit;
+  country?: string;
+  currency?: string;
+  email?: string;
 }
 
 export interface StepProps {

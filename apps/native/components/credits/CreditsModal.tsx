@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect } from "react";
 import {
   View,
   TextInput,
@@ -7,7 +7,6 @@ import {
   Pressable,
   ActivityIndicator,
   ScrollView,
-  Alert,
   KeyboardAvoidingView,
   Platform,
 } from "react-native";
@@ -26,11 +25,21 @@ import { useCredits } from "@/lib/hooks/useCredits";
 import { useQuery } from "convex/react";
 import { api } from "@/convex/_generated/api";
 
+const IS_IOS = Platform.OS === "ios";
+
 /* ─── Types ─── */
 
 interface CreditsModalProps {
   visible: boolean;
   onClose: () => void;
+}
+
+interface CreditPackage {
+  id: string;
+  credits: number;
+  priceKes: number;
+  label: string;
+  popular?: boolean;
 }
 
 type ModalStep = "packages" | "phone" | "processing" | "success" | "failed";
@@ -76,7 +85,7 @@ export function CreditsModal({ visible, onClose }: CreditsModalProps) {
     }
   }, [purchaseStatus]);
 
-  const selectedPackage = packages.find((p) => p.id === selectedPackageId);
+  const selectedPackage = packages.find((p: CreditPackage) => p.id === selectedPackageId);
 
   /* ─── Handlers ─── */
 
@@ -122,7 +131,6 @@ export function CreditsModal({ visible, onClose }: CreditsModalProps) {
 
   const accent = isDark ? "#D4A574" : "#5C2A33";
   const mutedText = isDark ? "#706B63" : "#9C948A";
-  const bg = isDark ? "#1A1614" : "#FAF8F5";
   const cardBg = isDark ? "#2D2926" : "#F5F0EB";
   const borderColor = isDark ? "#3D3630" : "#E0D8CC";
 
@@ -163,55 +171,59 @@ export function CreditsModal({ visible, onClose }: CreditsModalProps) {
         </View>
       </View>
 
-      {/* Packages */}
-      <Text className="text-sm font-medium text-foreground dark:text-foreground-dark mb-3">
-        Buy Credits
-      </Text>
-      <Text className="text-xs text-muted-foreground dark:text-muted-dark-foreground mb-4">
-        1 credit = 1 look • Paid via M-Pesa
-      </Text>
+      {!IS_IOS && (
+        /* ── Android: full purchase flow ── */
+        <View>
+          <Text className="text-sm font-medium text-foreground dark:text-foreground-dark mb-3">
+            Buy Credits
+          </Text>
+          <Text className="text-xs text-muted-foreground dark:text-muted-dark-foreground mb-4">
+            1 credit = 1 look • Paid via M-Pesa
+          </Text>
 
-      {packages.map((pkg) => (
-        <TouchableOpacity
-          key={pkg.id}
-          onPress={() => handleSelectPackage(pkg.id)}
-          className="flex-row items-center justify-between rounded-2xl p-4 mb-3"
-          style={{
-            backgroundColor: cardBg,
-            borderWidth: pkg.popular ? 2 : 1,
-            borderColor: pkg.popular ? accent : borderColor,
-          }}
-        >
-          <View className="flex-1">
-            <View className="flex-row items-center gap-2">
-              <Text className="text-lg font-semibold text-foreground dark:text-foreground-dark">
-                {pkg.credits} Credits
-              </Text>
-              {pkg.popular && (
-                <View
-                  className="px-2 py-0.5 rounded-full"
-                  style={{ backgroundColor: accent }}
-                >
-                  <Text className="text-[10px] font-bold text-white">
-                    POPULAR
-                  </Text>
-                </View>
-              )}
-            </View>
-            <Text className="text-xs text-muted-foreground dark:text-muted-dark-foreground mt-0.5">
-              KES {pkg.priceKes / pkg.credits} per credit
-            </Text>
-          </View>
-          <View className="items-end">
-            <Text
-              className="text-lg font-bold"
-              style={{ color: accent }}
+          {packages.map((pkg: CreditPackage) => (
+            <TouchableOpacity
+              key={pkg.id}
+              onPress={() => handleSelectPackage(pkg.id)}
+              className="flex-row items-center justify-between rounded-2xl p-4 mb-3"
+              style={{
+                backgroundColor: cardBg,
+                borderWidth: pkg.popular ? 2 : 1,
+                borderColor: pkg.popular ? accent : borderColor,
+              }}
             >
-              KES {pkg.priceKes.toLocaleString()}
-            </Text>
-          </View>
-        </TouchableOpacity>
-      ))}
+              <View className="flex-1">
+                <View className="flex-row items-center gap-2">
+                  <Text className="text-lg font-semibold text-foreground dark:text-foreground-dark">
+                    {pkg.credits} Credits
+                  </Text>
+                  {pkg.popular && (
+                    <View
+                      className="px-2 py-0.5 rounded-full"
+                      style={{ backgroundColor: accent }}
+                    >
+                      <Text className="text-[10px] font-bold text-white">
+                        POPULAR
+                      </Text>
+                    </View>
+                  )}
+                </View>
+                <Text className="text-xs text-muted-foreground dark:text-muted-dark-foreground mt-0.5">
+                  KES {pkg.priceKes / pkg.credits} per credit
+                </Text>
+              </View>
+              <View className="items-end">
+                <Text
+                  className="text-lg font-bold"
+                  style={{ color: accent }}
+                >
+                  KES {pkg.priceKes.toLocaleString()}
+                </Text>
+              </View>
+            </TouchableOpacity>
+          ))}
+        </View>
+      )}
     </View>
   );
 
@@ -465,7 +477,7 @@ export function CreditsModal({ visible, onClose }: CreditsModalProps) {
                 <Zap size={20} color={accent} />
                 <Text className="text-xl font-serif font-semibold text-foreground dark:text-foreground-dark">
                   {step === "packages"
-                    ? "Get Credits"
+                    ? (IS_IOS ? "Your Credits" : "Get Credits")
                     : step === "phone"
                       ? "Payment"
                       : step === "processing"

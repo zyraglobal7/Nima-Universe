@@ -1,7 +1,6 @@
 import { Tabs, Redirect, router } from "expo-router";
 import { View, ActivityIndicator, StyleSheet, Pressable, Text } from "react-native";
 import { useRef, useState, useContext } from "react";
-import { NavigationContext } from "@react-navigation/core";
 import { Sparkles, BookOpen, User, Camera, Home } from "lucide-react-native";
 import { useTheme } from "@/lib/contexts/ThemeContext";
 import { useConvexAuth } from "convex/react";
@@ -9,6 +8,7 @@ import { RouteErrorBoundary } from "@/components/ErrorBoundary";
 import { QuickTryOnModal } from "@/components/quick-try-on/QuickTryOnModal";
 import { FloatingAskNimaButton } from "@/components/engine/FloatingAskNimaButton";
 import { AskNimaSheet, type AskNimaSheetRef } from "@/components/ask/AskNimaSheet";
+import { NavigationContext } from "@react-navigation/core";
 
 // Re-export as Expo Router's route-level ErrorBoundary for tab screens
 export { RouteErrorBoundary as ErrorBoundary };
@@ -18,31 +18,25 @@ export default function TabLayout() {
   const { isLoading, isAuthenticated } = useConvexAuth();
   // Guard against the transient "Couldn't find a navigation context" error
   // that can fire during initial mount or Fast Refresh before Expo Router
-  // has wired up the NavigationContainer.
+  // has wired up the NavigationContainer. Must be called with all other hooks
+  // (no conditional hook calls), then we return null if context isn't ready.
   const navContext = useContext(NavigationContext);
   const askSheetRef = useRef<AskNimaSheetRef>(null);
   const [isQuickTryOnOpen, setIsQuickTryOnOpen] = useState(false);
   const [activeTab, setActiveTab] = useState<string>("discover");
   const [isAskSheetOpen, setIsAskSheetOpen] = useState(false);
 
+  const navState = navContext?.getState?.();
+
+  if (!navContext || !navState) {
+    return (
+      <View style={StyleSheet.absoluteFill} />
+    );
+  }
+
   // Redirect only after loading is complete and user is not authenticated
   if (!isLoading && !isAuthenticated) {
     return <Redirect href="/" />;
-  }
-
-  if (!navContext) {
-    return (
-      <View
-        style={{
-          flex: 1,
-          justifyContent: "center",
-          alignItems: "center",
-          backgroundColor: isDark ? "#1A1614" : "#FAF8F5",
-        }}
-      >
-        <ActivityIndicator size="large" color="#A67C52" />
-      </View>
-    );
   }
 
   const showFloatingBtn = activeTab === "engine" && !isAskSheetOpen;
@@ -165,16 +159,10 @@ export default function TabLayout() {
           }}
         />
         <Tabs.Screen
-          name="profile/index"
+          name="profile"
           options={{
             title: "Profile",
             tabBarIcon: ({ color, size }) => <User color={color} size={size} />,
-          }}
-        />
-        <Tabs.Screen
-          name="profile/discarded-looks"
-          options={{
-            href: null,
           }}
         />
       </Tabs>

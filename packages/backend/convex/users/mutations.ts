@@ -690,6 +690,7 @@ export const getOrCreateUser = mutation({
         country: v.string(),
         phone: v.string(),
       })),
+      referralCode: v.optional(v.string()),
       createdAt: v.number(),
       updatedAt: v.number(),
     }),

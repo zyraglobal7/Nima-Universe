@@ -1,4 +1,4 @@
-import { mutation, MutationCtx } from '../_generated/server';
+import { mutation, internalMutation, MutationCtx } from '../_generated/server';
 import { v } from 'convex/values';
 import type { Id } from '../_generated/dataModel';
 import { type SellerTier } from '../types';
@@ -897,5 +897,139 @@ export const deleteSellerProduct = mutation({
 
     await ctx.db.delete(args.itemId);
     return true;
+  },
+});
+
+const categoryValidator = v.union(
+  v.literal('top'),
+  v.literal('bottom'),
+  v.literal('dress'),
+  v.literal('outfit'),
+  v.literal('outerwear'),
+  v.literal('shoes'),
+  v.literal('accessory'),
+  v.literal('bag'),
+  v.literal('jewelry'),
+  v.literal('swimwear')
+);
+const genderValidator = v.union(v.literal('male'), v.literal('female'), v.literal('unisex'));
+
+/**
+ * Internal: insert a single scraped product for a seller, bypassing auth.
+ * Caller (action) is responsible for verifying seller identity + tier limits.
+ */
+export const insertScrapedProduct = internalMutation({
+  args: {
+    sellerId: v.id('sellers'),
+    name: v.string(),
+    description: v.optional(v.string()),
+    category: categoryValidator,
+    subcategory: v.optional(v.string()),
+    gender: genderValidator,
+    price: v.number(),
+    originalPrice: v.optional(v.number()),
+    colors: v.array(v.string()),
+    sizes: v.array(v.string()),
+    tags: v.array(v.string()),
+    inStock: v.boolean(),
+    sourceUrl: v.optional(v.string()),
+    sku: v.optional(v.string()),
+  },
+  returns: v.id('items'),
+  handler: async (
+    ctx: MutationCtx,
+    args: {
+      sellerId: Id<'sellers'>;
+      name: string;
+      description?: string;
+      category: 'top' | 'bottom' | 'dress' | 'outfit' | 'outerwear' | 'shoes' | 'accessory' | 'bag' | 'jewelry' | 'swimwear';
+      subcategory?: string;
+      gender: 'male' | 'female' | 'unisex';
+      price: number;
+      originalPrice?: number;
+      colors: string[];
+      sizes: string[];
+      tags: string[];
+      inStock: boolean;
+      sourceUrl?: string;
+      sku?: string;
+    }
+  ): Promise<Id<'items'>> => {
+    const now = Date.now();
+    const randomPart = Math.random().toString(36).substring(2, 10);
+    const publicId = `item_${randomPart}`;
+    return await ctx.db.insert('items', {
+      sellerId: args.sellerId,
+      publicId,
+      name: args.name,
+      description: args.description,
+      category: args.category,
+      subcategory: args.subcategory,
+      gender: args.gender,
+      price: args.price,
+      currency: 'KES',
+      originalPrice: args.originalPrice,
+      colors: args.colors,
+      sizes: args.sizes,
+      tags: args.tags,
+      inStock: args.inStock,
+      sourceUrl: args.sourceUrl,
+      sku: args.sku,
+      isActive: true,
+      isFeatured: false,
+      viewCount: 0,
+      saveCount: 0,
+      purchaseCount: 0,
+      createdAt: now,
+      updatedAt: now,
+    });
+  },
+});
+
+/**
+ * Internal: add an external-URL image to an item (for scraped products).
+ */
+export const insertScrapedItemImage = internalMutation({
+  args: {
+    itemId: v.id('items'),
+    externalUrl: v.string(),
+    imageType: v.union(
+      v.literal('front'),
+      v.literal('back'),
+      v.literal('side'),
+      v.literal('detail'),
+      v.literal('model'),
+      v.literal('flat_lay')
+    ),
+    isPrimary: v.boolean(),
+    sortOrder: v.number(),
+  },
+  returns: v.id('item_images'),
+  handler: async (
+    ctx: MutationCtx,
+    args: {
+      itemId: Id<'items'>;
+      externalUrl: string;
+      imageType: 'front' | 'back' | 'side' | 'detail' | 'model' | 'flat_lay';
+      isPrimary: boolean;
+      sortOrder: number;
+    }
+  ): Promise<Id<'item_images'>> => {
+    if (args.isPrimary) {
+      const existing = await ctx.db
+        .query('item_images')
+        .withIndex('by_item', (q) => q.eq('itemId', args.itemId))
+        .filter((q) => q.eq(q.field('isPrimary'), true))
+        .first();
+      if (existing) await ctx.db.patch(existing._id, { isPrimary: false });
+    }
+    return await ctx.db.insert('item_images', {
+      itemId: args.itemId,
+      externalUrl: args.externalUrl,
+      imageType: args.imageType,
+      isPrimary: args.isPrimary,
+      sortOrder: args.sortOrder,
+      createdAt: Date.now(),
+    });
   },
 });

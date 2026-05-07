@@ -1,6 +1,7 @@
 'use node';
 
 import { action, ActionCtx } from '../_generated/server';
+import { internal } from '../_generated/api';
 import { Id } from '../_generated/dataModel';
 import { v } from 'convex/values';
 import { generateObject } from 'ai';
@@ -198,6 +199,146 @@ If you cannot determine certain details with confidence, omit them rather than g
 });
 
 /**
+ * Import scraped products from an external Shopify store into the seller's catalog.
+ * Handles tier limits gracefully: stops importing when limit is reached and reports skipped count.
+ */
+export const importScrapedProducts = action({
+  args: {
+    products: v.array(
+      v.object({
+        name: v.string(),
+        description: v.optional(v.string()),
+        price: v.number(),
+        originalPrice: v.optional(v.number()),
+        category: v.union(
+          v.literal('top'),
+          v.literal('bottom'),
+          v.literal('dress'),
+          v.literal('outfit'),
+          v.literal('outerwear'),
+          v.literal('shoes'),
+          v.literal('accessory'),
+          v.literal('bag'),
+          v.literal('jewelry'),
+          v.literal('swimwear')
+        ),
+        subcategory: v.optional(v.string()),
+        gender: v.union(v.literal('male'), v.literal('female'), v.literal('unisex')),
+        colors: v.array(v.string()),
+        sizes: v.array(v.string()),
+        tags: v.array(v.string()),
+        inStock: v.boolean(),
+        sourceUrl: v.optional(v.string()),
+        sku: v.optional(v.string()),
+        imageUrls: v.array(v.string()),
+      })
+    ),
+  },
+  returns: v.object({
+    created: v.number(),
+    skipped: v.number(),
+    errors: v.array(v.string()),
+  }),
+  handler: async (
+    ctx: ActionCtx,
+    args: {
+      products: {
+        name: string;
+        description?: string;
+        price: number;
+        originalPrice?: number;
+        category:
+          | 'top'
+          | 'bottom'
+          | 'dress'
+          | 'outfit'
+          | 'outerwear'
+          | 'shoes'
+          | 'accessory'
+          | 'bag'
+          | 'jewelry'
+          | 'swimwear';
+        subcategory?: string;
+        gender: 'male' | 'female' | 'unisex';
+        colors: string[];
+        sizes: string[];
+        tags: string[];
+        inStock: boolean;
+        sourceUrl?: string;
+        sku?: string;
+        imageUrls: string[];
+      }[];
+    }
+  ): Promise<{ created: number; skipped: number; errors: string[] }> => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) {
+      return { created: 0, skipped: 0, errors: ['Not authenticated'] };
+    }
+
+    const sellerInfo = await ctx.runQuery(internal.sellers.queries.getSellerForImport, {
+      workosUserId: identity.subject,
+    });
+    if (!sellerInfo) {
+      return { created: 0, skipped: 0, errors: ['Seller profile not found'] };
+    }
+
+    const { sellerId, maxProducts, activeProductCount } = sellerInfo;
+    let created = 0;
+    let skipped = 0;
+    const errors: string[] = [];
+    let currentCount = activeProductCount;
+
+    for (const product of args.products) {
+      if (maxProducts !== null && currentCount >= maxProducts) {
+        skipped++;
+        continue;
+      }
+
+      try {
+        const itemId = await ctx.runMutation(internal.sellers.mutations.insertScrapedProduct, {
+          sellerId,
+          name: product.name,
+          description: product.description || undefined,
+          category: product.category,
+          subcategory: product.subcategory || undefined,
+          gender: product.gender,
+          price: product.price,
+          originalPrice: product.originalPrice,
+          colors: product.colors,
+          sizes: product.sizes,
+          tags: product.tags,
+          inStock: product.inStock,
+          sourceUrl: product.sourceUrl || undefined,
+          sku: product.sku || undefined,
+        });
+
+        for (let i = 0; i < product.imageUrls.length; i++) {
+          try {
+            await ctx.runMutation(internal.sellers.mutations.insertScrapedItemImage, {
+              itemId: itemId as Id<'items'>,
+              externalUrl: product.imageUrls[i],
+              imageType: i === 0 ? 'front' : 'model',
+              isPrimary: i === 0,
+              sortOrder: i,
+            });
+          } catch {
+            // Non-critical: product is created even if an image fails
+          }
+        }
+
+        created++;
+        currentCount++;
+      } catch (error) {
+        const msg = error instanceof Error ? error.message : 'Unknown error';
+        errors.push(`"${product.name}": ${msg}`);
+      }
+    }
+
+    return { created, skipped, errors };
+  },
+});
+
+/**
  * Apply ghost mannequin effect to a product image using Gemini image generation.
  * Removes the model/mannequin and returns a new image of the garment appearing
  * to be worn by an invisible body.
@@ -277,3 +418,6 @@ export const generateGhostMannequin = action({
     }
   },
 });
+
+
+

@@ -38,6 +38,16 @@ import {
 } from "@/components/ErrorBoundary";
 import { NetworkProvider } from "@/lib/contexts/NetworkContext";
 import { NoInternetBanner } from "@/components/ui/NoInternetBanner";
+import * as Sentry from '@sentry/react-native';
+
+Sentry.init({
+  dsn: 'https://21bea6fcd94785ee390edfbd3041fd53@o4511339712151552.ingest.de.sentry.io/4511339726897232',
+  sendDefaultPii: true,
+  enableLogs: true,
+  replaysSessionSampleRate: 0.1,
+  replaysOnErrorSampleRate: 1,
+  integrations: [Sentry.mobileReplayIntegration()],
+});
 
 // Re-export as Expo Router's route-level ErrorBoundary
 export { RouteErrorBoundary as ErrorBoundary } from "@/components/ErrorBoundary";
@@ -172,7 +182,7 @@ function LayoutContent() {
   );
 }
 
-export default function RootLayout() {
+export default Sentry.wrap(function RootLayout() {
   const [fontsLoaded, fontError] = useFonts({
     DMSans: DMSans_400Regular,
     DMSans_500Medium,
@@ -216,4 +226,4 @@ export default function RootLayout() {
       </AppErrorBoundary>
     </GestureHandlerRootView>
   );
-}
+});

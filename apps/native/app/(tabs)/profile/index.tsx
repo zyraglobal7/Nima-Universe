@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useContext } from "react";
+import { useState, useCallback } from "react";
 import {
   View,
   Text,
@@ -13,16 +13,11 @@ import { StyleFitTab } from "@/components/profile/StyleFitTab";
 import { AccountTab } from "@/components/profile/AccountTab";
 import { useQuery, useConvexAuth } from "convex/react";
 import { api } from "@/convex/_generated/api";
-import { NavigationContext } from "@react-navigation/core";
 
 const TABS = ["Settings", "Photos", "Style & Fit", "Account"] as const;
 type TabLabel = (typeof TABS)[number];
 
 export default function ProfileScreen() {
-  // Guard: don't render until the navigation context is available.
-  // Prevents the transient "Couldn't find a navigation context" error
-  // that occurs during initial mount or hot reload.
-  const navContext = useContext(NavigationContext);
   const { isLoading, isAuthenticated } = useConvexAuth();
   const [activeIndex, setActiveIndex] = useState(0);
   const currentUser = useQuery(api.users.queries.getCurrentUser);
@@ -31,7 +26,7 @@ export default function ProfileScreen() {
     setActiveIndex(index);
   }, []);
 
-  if (!navContext || isLoading || (isAuthenticated && currentUser === undefined)) {
+  if (isLoading || (isAuthenticated && currentUser === undefined)) {
     return (
       <SafeAreaView className="flex-1 bg-background dark:bg-background-dark items-center justify-center">
         <ActivityIndicator size="large" color="#A67C52" />
@@ -67,6 +62,8 @@ export default function ProfileScreen() {
     </SafeAreaView>
   );
 }
+
+// ─── Tab button ───────────────────────────────────────────────────────────────
 
 function TabButton({
   active,

@@ -1,12 +1,14 @@
-const { getDefaultConfig } = require("expo/metro-config");
 const { withNativeWind } = require("nativewind/metro");
 const path = require("path");
+const {
+  getSentryExpoConfig
+} = require("@sentry/react-native/metro");
 
 const projectRoot = __dirname;
 const workspaceRoot = path.resolve(projectRoot, "../..");
 
 /** @type {import('expo/metro-config').MetroConfig} */
-const config = getDefaultConfig(projectRoot);
+const config = getSentryExpoConfig(projectRoot);
 
 // Monorepo: merge workspace root into watchFolders (don't replace defaults)
 config.watchFolders = [...(config.watchFolders || []), workspaceRoot];
