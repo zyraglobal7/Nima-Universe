@@ -115,7 +115,7 @@ export default function SellerTryOnPickerPage({ params }: PageProps) {
                         src={item.imageUrl}
                         alt={item.name}
                         fill
-                        unoptimized={item.imageUrl.includes('convex')}
+                        unoptimized={item.imageUrl.includes('convex') || item.imageUrl.includes('cdn.shopify.com')}
                         className="object-cover group-hover:scale-105 transition-transform duration-300"
                       />
                     ) : (

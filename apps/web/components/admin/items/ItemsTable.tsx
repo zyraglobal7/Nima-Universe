@@ -294,7 +294,7 @@ export function ItemsTable({ onEdit }: ItemsTableProps) {
                           alt={item.name}
                           width={48}
                           height={48}
-                          unoptimized={imageUrl.includes('convex.cloud') || imageUrl.includes('convex.site')}
+                          unoptimized={imageUrl.includes('convex.cloud') || imageUrl.includes('convex.site') || imageUrl.includes('cdn.shopify.com')}
                           className="h-full w-full object-cover"
                         />
                       ) : (

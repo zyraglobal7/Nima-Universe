@@ -57,7 +57,7 @@ export function LookbookCard({ lookbook, coverImageUrl, itemImageUrls = [], inde
                 src={coverImageUrl}
                 alt={lookbook.name}
                 fill
-                unoptimized={coverImageUrl.includes('convex.cloud') || coverImageUrl.includes('convex.site')}
+                unoptimized={coverImageUrl.includes('convex.cloud') || coverImageUrl.includes('convex.site') || coverImageUrl.includes('cdn.shopify.com')}
                 className="object-cover transition-transform duration-500 group-hover:scale-105"
               />
             ) : showItemGrid ? (
@@ -69,7 +69,7 @@ export function LookbookCard({ lookbook, coverImageUrl, itemImageUrls = [], inde
                       src={imageUrl}
                       alt={`Item ${imgIndex + 1}`}
                       fill
-                      unoptimized={imageUrl.includes('convex.cloud') || imageUrl.includes('convex.site')}
+                      unoptimized={imageUrl.includes('convex.cloud') || imageUrl.includes('convex.site') || imageUrl.includes('cdn.shopify.com')}
                       className="object-cover transition-transform duration-500 group-hover:scale-105"
                     />
                   </div>

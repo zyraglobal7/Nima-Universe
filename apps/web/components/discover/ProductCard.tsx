@@ -70,7 +70,7 @@ export function ProductCard({ product, index, showAddToCart = true }: ProductCar
             src={product.imageUrl}
             alt={product.name}
             fill
-            unoptimized={product.imageUrl.includes('convex.cloud') || product.imageUrl.includes('convex.site')}
+            unoptimized={product.imageUrl.includes('convex.cloud') || product.imageUrl.includes('convex.site') || product.imageUrl.includes('cdn.shopify.com')}
             className="object-cover transition-transform duration-300 group-hover:scale-105"
           />
         </div>

@@ -189,7 +189,7 @@ function PublicLookCard({ look, index }: PublicLookCardProps) {
             src={imageUrl}
             alt={look.look.occasion || 'Look'}
             fill
-            unoptimized={imageUrl.includes('convex.cloud') || imageUrl.includes('convex.site')}
+            unoptimized={imageUrl.includes('convex.cloud') || imageUrl.includes('convex.site') || imageUrl.includes('cdn.shopify.com')}
             className="object-cover transition-transform duration-500 group-hover:scale-105"
             sizes="(max-width: 768px) 50vw, (max-width: 1200px) 33vw, 25vw"
           />

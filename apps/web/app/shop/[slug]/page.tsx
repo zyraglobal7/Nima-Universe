@@ -41,7 +41,8 @@ function ProductCard({
             fill
             unoptimized={
               item.primaryImageUrl.includes('convex.cloud') ||
-              item.primaryImageUrl.includes('convex.site')
+              item.primaryImageUrl.includes('convex.site') ||
+              item.primaryImageUrl.includes('cdn.shopify.com')
             }
             className="object-cover group-hover:scale-105 transition-transform duration-500"
           />

@@ -135,7 +135,7 @@ export function LookCard({ look, index }: LookCardProps) {
                           unoptimized={
                             product.imageUrl.includes('convex.cloud') ||
                             product.imageUrl.includes('convex.site') ||
-                            product.imageUrl.includes('workoscdn.com')
+                            product.imageUrl.includes('cdn.shopify.com')
                           }
                           className="object-cover"
                         />

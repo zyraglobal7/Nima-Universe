@@ -97,7 +97,7 @@ export function LookCarousel({
                         src={look.imageUrl}
                         alt={`Look ${index + 1}`}
                         fill
-                        unoptimized={look.imageUrl.includes('convex.cloud') || look.imageUrl.includes('convex.site')}
+                        unoptimized={look.imageUrl.includes('convex.cloud') || look.imageUrl.includes('convex.site') || look.imageUrl.includes('cdn.shopify.com')}
                         className="object-cover"
                       />
                       {/* Gradient overlay */}

@@ -129,7 +129,7 @@ export default function DiscardedLooksPage() {
                               alt={lookData.look.name || 'Discarded look'}
                               fill
                               className="object-cover"
-                              unoptimized={imageUrl.includes('convex.cloud') || imageUrl.includes('convex.site')}
+                              unoptimized={imageUrl.includes('convex.cloud') || imageUrl.includes('convex.site') || imageUrl.includes('cdn.shopify.com')}
                             />
                           ) : (
                             <div className="w-full h-full bg-surface-alt flex items-center justify-center">
@@ -170,7 +170,7 @@ export default function DiscardedLooksPage() {
                                     width={32}
                                     height={32}
                                     className="object-cover"
-                                    unoptimized={itemData.primaryImageUrl.includes('convex.cloud') || itemData.primaryImageUrl.includes('convex.site')}
+                                    unoptimized={itemData.primaryImageUrl.includes('convex.cloud') || itemData.primaryImageUrl.includes('convex.site') || itemData.primaryImageUrl.includes('cdn.shopify.com')}
                                   />
                                 ) : (
                                   <div className="w-full h-full flex items-center justify-center text-xs text-muted-foreground">

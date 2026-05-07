@@ -216,7 +216,8 @@ export default function CheckoutPage() {
                           fill
                           unoptimized={
                             item.imageUrl.includes('convex.cloud') ||
-                            item.imageUrl.includes('convex.site')
+                            item.imageUrl.includes('convex.site') ||
+                            item.imageUrl.includes('cdn.shopify.com')
                           }
                           className="object-cover"
                         />

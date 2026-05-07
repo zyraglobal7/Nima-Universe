@@ -319,7 +319,9 @@ export function ItemsTable({ onEdit }: ItemsTableProps) {
                           width={48}
                           height={48}
                           unoptimized={
-                            product.imageUrl.includes('convex.cloud') || product.imageUrl.includes('convex.site')
+                            product.imageUrl.includes('convex.cloud') ||
+                            product.imageUrl.includes('convex.site') ||
+                            product.imageUrl.includes('cdn.shopify.com')
                           }
                           className="h-full w-full object-cover"
                         />

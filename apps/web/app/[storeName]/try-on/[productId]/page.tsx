@@ -5,8 +5,9 @@ import { useMutation, useQuery } from 'convex/react';
 import { api } from '@/convex/_generated/api';
 import type { Id } from '@/convex/_generated/dataModel';
 import { Button } from '@/components/ui/button';
+import { Dialog, DialogContent } from '@/components/ui/dialog';
 import { toast } from 'sonner';
-import { Camera, Upload, X, Zap, SwitchCamera, RotateCcw, Download, Store } from 'lucide-react';
+import { Camera, Upload, X, Zap, SwitchCamera, RotateCcw, ShoppingCart, Store } from 'lucide-react';
 import Image from 'next/image';
 import { cn } from '@/lib/utils';
 
@@ -36,8 +37,12 @@ export default function SellerTryOnPage({ params }: PageProps) {
   const [cameraActive, setCameraActive] = useState(false);
   const [inputMode, setInputMode] = useState<'camera' | 'upload'>('camera');
 
+  const [imageOpen, setImageOpen] = useState(false);
+  const [isAddingToCart, setIsAddingToCart] = useState(false);
+
   const generateUploadUrl = useMutation(api.sellerTryOns.mutations.generateCustomerUploadUrl);
   const createSellerTryOn = useMutation(api.sellerTryOns.mutations.createSellerTryOn);
+  const addToCart = useMutation(api.cart.mutations.addToCart);
 
   const sellerAndItem = useQuery(
     api.sellerTryOns.queries.getSellerAndItemForTryOn,
@@ -205,12 +210,21 @@ export default function SellerTryOnPage({ params }: PageProps) {
     setPageState('landing');
   };
 
-  const handleDownload = () => {
-    if (!tryOnResult?.resultUrl) return;
-    const a = document.createElement('a');
-    a.href = tryOnResult.resultUrl;
-    a.download = 'try-on.png';
-    a.click();
+  const handleAddToCart = async () => {
+    if (!sellerAndItem) return;
+    setIsAddingToCart(true);
+    try {
+      const result = await addToCart({ itemId: sellerAndItem.item._id, quantity: 1 });
+      if (result.success) {
+        toast.success('Added to cart!');
+      } else {
+        toast.error(result.message);
+      }
+    } catch {
+      toast.error('Failed to add to cart. Are you signed in?');
+    } finally {
+      setIsAddingToCart(false);
+    }
   };
 
   if (sellerAndItem === undefined) {
@@ -262,14 +276,18 @@ export default function SellerTryOnPage({ params }: PageProps) {
       <div className="flex-1 max-w-lg mx-auto w-full px-4 py-6 flex flex-col gap-6">
         {/* Product Card */}
         <div className="flex gap-4 items-start bg-surface rounded-xl p-4 border border-border">
-          <div className="w-20 h-20 rounded-lg overflow-hidden bg-muted flex-shrink-0">
+          <button
+            className="w-20 h-20 rounded-lg overflow-hidden bg-muted flex-shrink-0 cursor-pointer hover:opacity-90 transition-opacity focus:outline-none focus:ring-2 focus:ring-primary"
+            onClick={() => item.imageUrl && setImageOpen(true)}
+            aria-label="View product image"
+          >
             {item.imageUrl ? (
               <Image
                 src={item.imageUrl}
                 alt={item.name}
                 width={80}
                 height={80}
-                unoptimized={item.imageUrl.includes('convex')}
+                unoptimized={item.imageUrl.includes('convex') || item.imageUrl.includes('cdn.shopify.com')}
                 className="w-full h-full object-cover"
               />
             ) : (
@@ -277,7 +295,7 @@ export default function SellerTryOnPage({ params }: PageProps) {
                 No image
               </div>
             )}
-          </div>
+          </button>
           <div className="flex-1">
             <h2 className="font-medium text-foreground">{item.name}</h2>
             {item.brand && <p className="text-sm text-muted-foreground">{item.brand}</p>}
@@ -431,11 +449,12 @@ export default function SellerTryOnPage({ params }: PageProps) {
                 Try Again
               </Button>
               <Button
-                onClick={handleDownload}
+                onClick={handleAddToCart}
+                disabled={isAddingToCart}
                 className="flex-1 bg-primary text-primary-foreground hover:bg-primary/90"
               >
-                <Download className="w-4 h-4 mr-2" />
-                Save Photo
+                <ShoppingCart className="w-4 h-4 mr-2" />
+                {isAddingToCart ? 'Adding…' : 'Add to Cart'}
               </Button>
             </div>
           )}
@@ -447,6 +466,34 @@ export default function SellerTryOnPage({ params }: PageProps) {
           )}
         </div>
       </div>
+
+      {/* Image lightbox */}
+      {item.imageUrl && (
+        <Dialog open={imageOpen} onOpenChange={setImageOpen}>
+          <DialogContent className="max-w-sm p-2 bg-background">
+            <div className="relative w-full aspect-square rounded-lg overflow-hidden">
+              <Image
+                src={item.imageUrl}
+                alt={item.name}
+                fill
+                sizes="(max-width: 640px) 100vw, 384px"
+                unoptimized={item.imageUrl.includes('convex') || item.imageUrl.includes('cdn.shopify.com')}
+                className="object-cover"
+              />
+            </div>
+            <div className="px-2 pb-2">
+              <p className="font-medium text-sm">{item.name}</p>
+              <p className="text-primary text-sm font-semibold mt-0.5">
+                {new Intl.NumberFormat('en-US', {
+                  style: 'currency',
+                  currency: item.currency || 'KES',
+                  minimumFractionDigits: 0,
+                }).format(item.price)}
+              </p>
+            </div>
+          </DialogContent>
+        </Dialog>
+      )}
     </div>
   );
 }

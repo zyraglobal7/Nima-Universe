@@ -93,7 +93,7 @@ export function ApparelItemCard({
                 loading={index < 4 ? 'eager' : 'lazy'}
                 priority={index < 2}
                 unoptimized={
-                  item.primaryImageUrl!.includes('convex.cloud') || item.primaryImageUrl!.includes('convex.site')
+                  item.primaryImageUrl!.includes('convex.cloud') || item.primaryImageUrl!.includes('convex.site') || item.primaryImageUrl!.includes('cdn.shopify.com')
                 }
                 className="object-cover transition-transform duration-500 group-hover:scale-105"
               />

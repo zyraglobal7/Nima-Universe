@@ -307,7 +307,7 @@ export function EditItemForm({ itemId, onSuccess, onCancel }: EditItemFormProps)
                         alt={`Product image`}
                         width={200}
                         height={200}
-                        unoptimized={img.url.includes('convex.cloud') || img.url.includes('convex.site')}
+                        unoptimized={img.url.includes('convex.cloud') || img.url.includes('convex.site') || img.url.includes('cdn.shopify.com')}
                         className="h-full w-full object-cover"
                       />
                     ) : (

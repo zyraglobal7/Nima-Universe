@@ -89,7 +89,7 @@ export function MostSavedLookSlide({ mostSavedLookId }: MostSavedLookSlideProps)
             src={lookDetails.imageUrl}
             alt="Most saved look"
             fill
-            unoptimized={lookDetails.imageUrl.includes('convex.cloud') || lookDetails.imageUrl.includes('convex.site')}
+            unoptimized={lookDetails.imageUrl.includes('convex.cloud') || lookDetails.imageUrl.includes('convex.site') || lookDetails.imageUrl.includes('cdn.shopify.com')}
             className="object-cover"
           />
         </motion.div>

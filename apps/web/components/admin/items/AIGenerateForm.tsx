@@ -331,7 +331,7 @@ export function AIGenerateForm({ onSuccess, onCancel }: AIGenerateFormProps) {
                     alt="Uploaded product"
                     width={192}
                     height={192}
-                    unoptimized={uploadedImage.url.includes('convex.cloud') || uploadedImage.url.includes('convex.site')}
+                    unoptimized={uploadedImage.url.includes('convex.cloud') || uploadedImage.url.includes('convex.site') || uploadedImage.url.includes('cdn.shopify.com')}
                     className="h-full w-full object-cover"
                   />
                 </div>
@@ -365,7 +365,7 @@ export function AIGenerateForm({ onSuccess, onCancel }: AIGenerateFormProps) {
                     alt="Uploaded product"
                     width={192}
                     height={192}
-                    unoptimized={uploadedImage.url.includes('convex.cloud') || uploadedImage.url.includes('convex.site')}
+                    unoptimized={uploadedImage.url.includes('convex.cloud') || uploadedImage.url.includes('convex.site') || uploadedImage.url.includes('cdn.shopify.com')}
                     className="h-full w-full object-cover"
                   />
                 </div>
@@ -424,7 +424,7 @@ export function AIGenerateForm({ onSuccess, onCancel }: AIGenerateFormProps) {
                   alt="Uploaded product"
                   width={192}
                   height={192}
-                  unoptimized={uploadedImage.url.includes('convex.cloud') || uploadedImage.url.includes('convex.site')}
+                  unoptimized={uploadedImage.url.includes('convex.cloud') || uploadedImage.url.includes('convex.site') || uploadedImage.url.includes('cdn.shopify.com')}
                   className="h-full w-full object-cover"
                 />
               </div>

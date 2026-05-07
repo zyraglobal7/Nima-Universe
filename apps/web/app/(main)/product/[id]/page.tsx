@@ -301,7 +301,7 @@ export default function ProductDetailPage() {
                   alt={item.name}
                   fill
                   priority
-                  unoptimized={currentImage.includes('convex.cloud') || currentImage.includes('convex.site')}
+                  unoptimized={currentImage.includes('convex.cloud') || currentImage.includes('convex.site') || currentImage.includes('cdn.shopify.com')}
                   className="object-cover"
                 />
               </motion.div>

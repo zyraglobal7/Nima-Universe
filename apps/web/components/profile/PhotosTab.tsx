@@ -264,7 +264,7 @@ export function PhotosTab() {
                   alt="Your photo"
                   fill
                   className="object-cover"
-                  unoptimized={image.url.includes('convex.cloud') || image.url.includes('convex.site')}
+                  unoptimized={image.url.includes('convex.cloud') || image.url.includes('convex.site') || image.url.includes('cdn.shopify.com')}
                 />
               )}
 

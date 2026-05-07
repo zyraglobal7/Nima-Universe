@@ -23,6 +23,7 @@ import {
 } from 'lucide-react';
 import { toast } from 'sonner';
 import type { Id } from '@/convex/_generated/dataModel';
+import { StoreImporter } from '@/components/seller/StoreImporter';
 
 export default function SellerSettingsPage() {
   const seller = useQuery(api.sellers.queries.getCurrentSeller);
@@ -410,6 +411,9 @@ export default function SellerSettingsPage() {
           </div>
         </CardContent>
       </Card>
+
+      {/* Store Importer */}
+      <StoreImporter />
 
       {/* Account */}
       <Card>

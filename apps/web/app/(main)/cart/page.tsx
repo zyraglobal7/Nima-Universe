@@ -163,8 +163,9 @@ export default function CartPage() {
                           src={cartItem.imageUrl}
                           alt={cartItem.item.name}
                           fill
+                          sizes="96px"
                           unoptimized={
-                            cartItem.imageUrl.includes('convex.cloud') || cartItem.imageUrl.includes('convex.site')
+                            cartItem.imageUrl.includes('convex.cloud') || cartItem.imageUrl.includes('convex.site') || cartItem.imageUrl.includes('cdn.shopify.com')
                           }
                           className="object-cover"
                         />
