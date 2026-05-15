@@ -16,6 +16,7 @@ import {
   Scissors,
   Layers,
   ClipboardList,
+  ArrowRight,
 } from 'lucide-react';
 import {
   Sidebar,
@@ -177,7 +178,24 @@ export function SellerSidebar() {
         )}
       </SidebarContent>
 
-      <SidebarFooter className="border-t border-sidebar-border">
+      <SidebarFooter className="border-t border-sidebar-border space-y-2 p-2">
+        {seller && seller.sellerType !== 'tailor' && (
+          <Link
+            href="/seller/tailor/onboarding"
+            className="group flex items-start gap-3 rounded-xl border border-primary/20 bg-gradient-to-br from-primary/8 to-secondary/8 p-3 transition-all hover:border-primary/40 hover:from-primary/12 hover:to-secondary/12"
+          >
+            <div className="mt-0.5 flex h-7 w-7 flex-shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary transition-colors group-hover:bg-primary/20">
+              <Scissors className="size-3.5" />
+            </div>
+            <div className="min-w-0 flex-1">
+              <p className="text-xs font-semibold text-foreground leading-tight">Are you a tailor?</p>
+              <p className="mt-0.5 text-[11px] leading-snug text-muted-foreground">
+                Unlock custom orders, measurements &amp; fabric management.
+              </p>
+            </div>
+            <ArrowRight className="mt-1 size-3.5 flex-shrink-0 text-muted-foreground transition-transform group-hover:translate-x-0.5" />
+          </Link>
+        )}
         <SidebarMenu>
           <SidebarMenuItem>
             <SidebarMenuButton asChild tooltip="Shop Settings">

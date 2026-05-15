@@ -1033,3 +1033,60 @@ export const insertScrapedItemImage = internalMutation({
     });
   },
 });
+
+/**
+ * Upgrade an existing seller account to tailor type.
+ * Sets sellerType = 'tailor' and stores tailor-specific profile details.
+ */
+export const upgradeToTailor = mutation({
+  args: {
+    skillTags: v.array(v.string()),
+    weeklyCapacity: v.number(),
+    turnaroundDays: v.object({
+      casual: v.number(),
+      formal: v.number(),
+      traditional: v.number(),
+      structured: v.number(),
+    }),
+    laborPricing: v.array(v.object({
+      garmentType: v.string(),
+      priceKES: v.number(),
+    })),
+  },
+  returns: v.null(),
+  handler: async (
+    ctx: MutationCtx,
+    args: {
+      skillTags: string[];
+      weeklyCapacity: number;
+      turnaroundDays: { casual: number; formal: number; traditional: number; structured: number };
+      laborPricing: Array<{ garmentType: string; priceKES: number }>;
+    }
+  ): Promise<null> => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) throw new Error('Not authenticated');
+
+    const user = await ctx.db
+      .query('users')
+      .withIndex('by_workos_user_id', (q) => q.eq('workosUserId', identity.subject))
+      .unique();
+    if (!user) throw new Error('User not found');
+
+    const seller = await ctx.db
+      .query('sellers')
+      .withIndex('by_user', (q) => q.eq('userId', user._id))
+      .first();
+    if (!seller) throw new Error('Seller profile not found');
+    if (seller.sellerType === 'tailor') throw new Error('Already a tailor');
+
+    await ctx.db.patch(seller._id, {
+      sellerType: 'tailor',
+      skillTags: args.skillTags,
+      weeklyCapacity: args.weeklyCapacity,
+      turnaroundDays: args.turnaroundDays,
+      laborPricing: args.laborPricing,
+      updatedAt: Date.now(),
+    });
+    return null;
+  },
+});

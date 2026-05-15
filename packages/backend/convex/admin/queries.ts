@@ -64,9 +64,92 @@ const itemValidator = v.object({
   cartAddCount: v.optional(v.number()),
   lookbookSaveCount: v.optional(v.number()),
   lookInclusionCount: v.optional(v.number()),
+  kind: v.optional(v.union(v.literal('ready_made'), v.literal('tailored_design'))),
   createdAt: v.number(),
   updatedAt: v.number(),
 });
+
+type AdminItem = {
+  _id: Id<'items'>;
+  _creationTime: number;
+  publicId: string;
+  sku?: string;
+  name: string;
+  brand?: string;
+  description?: string;
+  category: 'top' | 'bottom' | 'dress' | 'outfit' | 'swimwear' | 'outerwear' | 'shoes' | 'accessory' | 'bag' | 'jewelry';
+  subcategory?: string;
+  gender: 'male' | 'female' | 'unisex';
+  price: number;
+  currency: string;
+  originalPrice?: number;
+  colors: string[];
+  sizes: string[];
+  material?: string;
+  tags: string[];
+  occasion?: string[];
+  season?: string[];
+  sourceStore?: string;
+  sourceUrl?: string;
+  affiliateUrl?: string;
+  inStock: boolean;
+  stockQuantity?: number;
+  isActive: boolean;
+  isFeatured?: boolean;
+  sellerId?: Id<'sellers'>;
+  viewCount?: number;
+  saveCount?: number;
+  purchaseCount?: number;
+  tryOnCount?: number;
+  cartAddCount?: number;
+  lookbookSaveCount?: number;
+  lookInclusionCount?: number;
+  kind?: 'ready_made' | 'tailored_design';
+  createdAt: number;
+  updatedAt: number;
+};
+
+function toAdminItem(doc: Doc<'items'>): AdminItem {
+  return {
+    _id: doc._id,
+    _creationTime: doc._creationTime,
+    publicId: doc.publicId,
+    sku: doc.sku,
+    name: doc.name,
+    brand: doc.brand,
+    description: doc.description,
+    category: doc.category,
+    subcategory: doc.subcategory,
+    gender: doc.gender,
+    price: doc.price,
+    currency: doc.currency,
+    originalPrice: doc.originalPrice,
+    colors: doc.colors,
+    sizes: doc.sizes,
+    material: doc.material,
+    tags: doc.tags,
+    occasion: doc.occasion,
+    season: doc.season,
+    sourceStore: doc.sourceStore,
+    sourceUrl: doc.sourceUrl,
+    affiliateUrl: doc.affiliateUrl,
+    inStock: doc.inStock,
+    stockQuantity: doc.stockQuantity,
+    isActive: doc.isActive,
+    isFeatured: doc.isFeatured,
+    sellerId: doc.sellerId,
+    viewCount: doc.viewCount,
+    saveCount: doc.saveCount,
+    purchaseCount: doc.purchaseCount,
+    tryOnCount: doc.tryOnCount,
+    cartAddCount: doc.cartAddCount,
+    lookbookSaveCount: doc.lookbookSaveCount,
+    lookInclusionCount: doc.lookInclusionCount,
+    kind: (doc as Doc<'items'> & { kind?: 'ready_made' | 'tailored_design' }).kind,
+    createdAt: doc.createdAt,
+    updatedAt: doc.updatedAt,
+  };
+}
 
 // Item image validator
 const itemImageValidator = v.object({
@@ -119,7 +202,7 @@ export const listAllItems = query({
     }
   ): Promise<{
     items: Array<{
-      item: Doc<'items'>;
+      item: AdminItem;
       primaryImage: Doc<'item_images'> | null;
       imageUrl: string | null;
     }>;
@@ -214,7 +297,7 @@ export const listAllItems = query({
         }
 
         return {
-          item,
+          item: toAdminItem(item),
           primaryImage,
           imageUrl,
         };

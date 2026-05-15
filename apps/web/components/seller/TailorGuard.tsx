@@ -2,9 +2,12 @@
 
 import { useQuery } from 'convex/react';
 import { api } from '@/convex/_generated/api';
-import { useRouter } from 'next/navigation';
+import { useRouter, usePathname } from 'next/navigation';
 import { useEffect } from 'react';
 import { Loader2, Scissors } from 'lucide-react';
+import { SidebarProvider, SidebarInset } from '@/components/ui/sidebar';
+import { SellerSidebar } from '@/components/seller/SellerSidebar';
+import { SellerHeader } from '@/components/seller/SellerHeader';
 
 interface TailorGuardProps {
   children: React.ReactNode;
@@ -12,16 +15,22 @@ interface TailorGuardProps {
 
 export function TailorGuard({ children }: TailorGuardProps) {
   const router = useRouter();
+  const pathname = usePathname();
   const seller = useQuery(api.sellers.queries.getCurrentSeller);
 
+  const isOnboarding = pathname === '/seller/tailor/onboarding';
+
   useEffect(() => {
+    if (isOnboarding) return;
     if (seller === null) {
       router.push('/seller/onboarding');
     } else if (seller !== undefined && seller.sellerType !== 'tailor') {
-      // Has a seller account but not a tailor — redirect to regular dashboard
       router.push('/seller');
     }
-  }, [seller, router]);
+  }, [seller, router, isOnboarding]);
+
+  // Onboarding: render bare (full-screen, no sidebar shell)
+  if (isOnboarding) return <>{children}</>;
 
   if (seller === undefined) {
     return (
@@ -46,5 +55,13 @@ export function TailorGuard({ children }: TailorGuardProps) {
     );
   }
 
-  return <>{children}</>;
+  return (
+    <SidebarProvider>
+      <SellerSidebar />
+      <SidebarInset>
+        <SellerHeader />
+        <main className="flex-1 overflow-auto p-6">{children}</main>
+      </SidebarInset>
+    </SidebarProvider>
+  );
 }

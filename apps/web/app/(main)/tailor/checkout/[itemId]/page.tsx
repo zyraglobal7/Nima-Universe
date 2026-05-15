@@ -94,40 +94,40 @@ export default function TailorCheckoutPage() {
 
   if (!item) {
     return (
-      <div className="max-w-lg mx-auto py-12 text-center space-y-3">
-        <p className="text-text-secondary">Design not found.</p>
+      <div className="max-w-lg mx-auto px-4 py-12 text-center space-y-3">
+        <p className="text-muted-foreground">Design not found.</p>
         <Button variant="ghost" onClick={() => router.push('/tailor/feed')}>Back to feed</Button>
       </div>
     );
   }
 
   return (
-    <div className="max-w-lg mx-auto space-y-6 pb-20">
+    <div className="max-w-lg mx-auto px-4 pt-6 space-y-6 pb-20">
       <button
         onClick={() => router.back()}
-        className="flex items-center gap-1 text-sm text-text-secondary hover:text-text-primary transition-colors"
+        className="flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground transition-colors"
       >
         <ArrowLeft className="w-4 h-4" />
         Back
       </button>
 
       <div>
-        <h1 className="text-xl font-serif font-semibold text-text-primary">Confirm &amp; pay</h1>
-        <p className="text-sm text-text-secondary mt-1">Full payment via M-Pesa. No balance on delivery.</p>
+        <h1 className="text-xl font-serif font-semibold text-foreground">Confirm &amp; pay</h1>
+        <p className="text-sm text-muted-foreground mt-1">Full payment via M-Pesa. No balance on delivery.</p>
       </div>
 
       {/* Order summary */}
       <div className="rounded-xl border border-border bg-surface p-4 space-y-3">
         <div className="flex justify-between text-sm">
-          <span className="text-text-secondary">{item.name}</span>
-          <span className="font-semibold text-text-primary">KES {item.price.toLocaleString()}</span>
+          <span className="text-muted-foreground">{item.name}</span>
+          <span className="font-semibold text-foreground">KES {item.price.toLocaleString()}</span>
         </div>
         <div className="flex justify-between text-sm">
-          <span className="text-text-secondary">Lead time</span>
-          <span className="text-text-primary">7–10 days</span>
+          <span className="text-muted-foreground">Lead time</span>
+          <span className="text-foreground">7–10 days</span>
         </div>
         <div className="border-t border-border pt-3 flex justify-between">
-          <span className="font-medium text-text-primary">Total</span>
+          <span className="font-medium text-foreground">Total</span>
           <span className="font-bold text-lg text-primary">KES {item.price.toLocaleString()}</span>
         </div>
       </div>
@@ -135,20 +135,20 @@ export default function TailorCheckoutPage() {
       {/* Measurements summary */}
       {measurements ? (
         <Collapsible open={measurementsOpen} onOpenChange={setMeasurementsOpen}>
-          <CollapsibleTrigger className="w-full flex items-center justify-between rounded-lg border border-border bg-surface p-3 text-sm hover:bg-surface-2 transition-colors">
-            <span className="flex items-center gap-2 text-text-secondary">
+          <CollapsibleTrigger className="w-full flex items-center justify-between rounded-lg border border-border bg-surface p-3 text-sm hover:bg-surface-alt transition-colors">
+            <span className="flex items-center gap-2 text-muted-foreground">
               <Ruler className="w-4 h-4" />
               Your measurements (saved)
             </span>
-            <ChevronDown className={`w-4 h-4 text-text-secondary transition-transform ${measurementsOpen ? 'rotate-180' : ''}`} />
+            <ChevronDown className={`w-4 h-4 text-muted-foreground transition-transform ${measurementsOpen ? 'rotate-180' : ''}`} />
           </CollapsibleTrigger>
           <CollapsibleContent>
             <div className="rounded-b-lg border border-t-0 border-border bg-surface px-4 pb-4 pt-2">
-              <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-xs text-text-secondary">
+              <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-xs text-muted-foreground">
                 {Object.entries(measurements.values as Record<string, number>).map(([k, v]) => (
                   <div key={k} className="flex justify-between">
                     <span className="capitalize">{k}</span>
-                    <span className="font-medium text-text-primary">{v} cm</span>
+                    <span className="font-medium text-foreground">{v} cm</span>
                   </div>
                 ))}
               </div>
@@ -182,7 +182,7 @@ export default function TailorCheckoutPage() {
           value={phone}
           onChange={(e) => setPhone(e.target.value)}
         />
-        <p className="text-xs text-text-secondary">You'll receive an M-Pesa STK push on this number.</p>
+        <p className="text-xs text-muted-foreground">You'll receive an M-Pesa STK push on this number.</p>
       </div>
 
       <Button

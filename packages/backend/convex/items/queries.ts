@@ -102,37 +102,88 @@ export const getItemByPublicId = query({
   },
 });
 
-/**
- * List tailored designs for the tailor feed
- */
+const tailoredDesignItem = v.object({
+  _id: v.id('items'),
+  _creationTime: v.number(),
+  name: v.string(),
+  brand: v.optional(v.string()),
+  price: v.number(),
+  currency: v.string(),
+  description: v.optional(v.string()),
+  material: v.optional(v.string()),
+  category: categoryValidator,
+  tags: v.array(v.string()),
+  sellerId: v.optional(v.id('sellers')),
+});
+
+type TailoredDesignItem = {
+  _id: Id<'items'>;
+  _creationTime: number;
+  name: string;
+  brand?: string;
+  price: number;
+  currency: string;
+  description?: string;
+  material?: string;
+  category: 'top' | 'bottom' | 'dress' | 'outfit' | 'outerwear' | 'shoes' | 'accessory' | 'bag' | 'jewelry' | 'swimwear';
+  tags: string[];
+  sellerId?: Id<'sellers'>;
+};
+
 export const getTailoredDesigns = query({
   args: { limit: v.optional(v.number()) },
-  returns: v.array(itemValidator),
+  returns: v.array(tailoredDesignItem),
   handler: async (
     ctx: QueryCtx,
     args: { limit?: number }
-  ): Promise<Doc<'items'>[]> => {
+  ): Promise<TailoredDesignItem[]> => {
     const all = await ctx.db
       .query('items')
       .withIndex('by_active_and_category', (q) => q.eq('isActive', true))
       .order('desc')
       .collect();
 
-    const designs = all.filter((i) => i.kind === 'tailored_design');
-    return designs.slice(0, args.limit ?? 50);
+    return all
+      .filter((i) => i.kind === 'tailored_design')
+      .slice(0, args.limit ?? 50)
+      .map((i) => ({
+        _id: i._id,
+        _creationTime: i._creationTime,
+        name: i.name,
+        brand: i.brand,
+        price: i.price,
+        currency: i.currency,
+        description: i.description,
+        material: i.material,
+        category: i.category,
+        tags: i.tags,
+        sellerId: i.sellerId,
+      }));
   },
 });
 
-/**
- * Get a single tailored design by ID (any user, must be active)
- */
 export const getTailoredDesign = query({
   args: { itemId: v.id('items') },
-  returns: v.union(itemValidator, v.null()),
-  handler: async (ctx: QueryCtx, args: { itemId: Id<'items'> }): Promise<Doc<'items'> | null> => {
+  returns: v.union(tailoredDesignItem, v.null()),
+  handler: async (
+    ctx: QueryCtx,
+    args: { itemId: Id<'items'> }
+  ): Promise<TailoredDesignItem | null> => {
     const item = await ctx.db.get(args.itemId);
     if (!item || !item.isActive || item.kind !== 'tailored_design') return null;
-    return item;
+    return {
+      _id: item._id,
+      _creationTime: item._creationTime,
+      name: item.name,
+      brand: item.brand,
+      price: item.price,
+      currency: item.currency,
+      description: item.description,
+      material: item.material,
+      category: item.category,
+      tags: item.tags,
+      sellerId: item.sellerId,
+    };
   },
 });
 

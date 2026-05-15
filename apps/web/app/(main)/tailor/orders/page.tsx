@@ -50,16 +50,16 @@ export default function TailorOrdersPage() {
   }
 
   return (
-    <div className="space-y-6 pb-16">
+    <div className="max-w-2xl mx-auto px-4 pt-6 space-y-6 pb-16">
       <div>
-        <h1 className="text-2xl font-serif font-semibold text-text-primary">Tailored orders</h1>
-        <p className="text-sm text-text-secondary mt-1">Track your custom-made orders.</p>
+        <h1 className="text-2xl font-serif font-semibold text-foreground">Tailored orders</h1>
+        <p className="text-sm text-muted-foreground mt-1">Track your custom-made orders.</p>
       </div>
 
       {orders.length === 0 ? (
         <div className="flex flex-col items-center justify-center py-24 text-center space-y-4">
-          <Package className="w-12 h-12 text-text-secondary opacity-30" />
-          <p className="text-text-secondary text-sm">No orders yet.</p>
+          <Package className="w-12 h-12 text-muted-foreground opacity-30" />
+          <p className="text-muted-foreground text-sm">No orders yet.</p>
           <Button onClick={() => router.push('/tailor/feed')}>Browse designs</Button>
         </div>
       ) : (
@@ -68,20 +68,20 @@ export default function TailorOrdersPage() {
             <button
               key={order._id}
               onClick={() => router.push(`/tailor/orders/${order.orderNumber}`)}
-              className="w-full flex items-center justify-between p-4 rounded-xl border border-border bg-surface hover:bg-surface-2 transition-colors text-left"
+              className="w-full flex items-center justify-between p-4 rounded-xl border border-border bg-surface hover:bg-surface-alt transition-colors text-left"
             >
               <div className="space-y-1 min-w-0 flex-1">
                 <div className="flex items-center gap-2">
-                  <span className="font-medium text-sm text-text-primary">{order.orderNumber}</span>
+                  <span className="font-medium text-sm text-foreground">{order.orderNumber}</span>
                   <Badge variant={STATUS_VARIANT[order.status] ?? 'secondary'} className="text-xs">
                     {STATUS_LABELS[order.status] ?? order.status}
                   </Badge>
                 </div>
-                <p className="text-xs text-text-secondary">
+                <p className="text-xs text-muted-foreground">
                   KES {order.retailPriceKES.toLocaleString()} · Due {new Date(order.deadlineDate).toLocaleDateString('en-KE', { day: 'numeric', month: 'short' })}
                 </p>
               </div>
-              <ChevronRight className="w-4 h-4 text-text-secondary flex-shrink-0 ml-2" />
+              <ChevronRight className="w-4 h-4 text-muted-foreground flex-shrink-0 ml-2" />
             </button>
           ))}
         </div>

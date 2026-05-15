@@ -34,8 +34,8 @@ export default function TailorDesignPage() {
   if (item === null) {
     return (
       <div className="flex flex-col items-center justify-center py-24 text-center space-y-3">
-        <Scissors className="w-12 h-12 text-text-secondary opacity-30" />
-        <p className="text-text-secondary">Design not available.</p>
+        <Scissors className="w-12 h-12 text-muted-foreground opacity-30" />
+        <p className="text-muted-foreground">Design not available.</p>
         <Button variant="ghost" size="sm" onClick={() => router.back()}>
           Go back
         </Button>
@@ -46,25 +46,25 @@ export default function TailorDesignPage() {
   const garmentType = itemCategoryToGarmentType(item.category);
 
   return (
-    <div className="max-w-lg mx-auto space-y-6 pb-20">
+    <div className="max-w-lg mx-auto px-4 pt-6 space-y-6 pb-20">
       <button
         onClick={() => router.back()}
-        className="flex items-center gap-1 text-sm text-text-secondary hover:text-text-primary transition-colors"
+        className="flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground transition-colors"
       >
         <ArrowLeft className="w-4 h-4" />
         Back
       </button>
 
       {/* Hero image placeholder */}
-      <div className="aspect-[3/4] bg-surface-2 rounded-xl flex items-center justify-center">
-        <Scissors className="w-16 h-16 text-text-secondary opacity-20" />
+      <div className="aspect-[3/4] bg-surface-alt rounded-xl flex items-center justify-center">
+        <Scissors className="w-16 h-16 text-muted-foreground opacity-20" />
       </div>
 
       {/* Info */}
       <div className="space-y-4">
         <div>
-          <h1 className="text-xl font-serif font-semibold text-text-primary">{item.name}</h1>
-          {item.brand && <p className="text-sm text-text-secondary mt-0.5">{item.brand}</p>}
+          <h1 className="text-xl font-serif font-semibold text-foreground">{item.name}</h1>
+          {item.brand && <p className="text-sm text-muted-foreground mt-0.5">{item.brand}</p>}
         </div>
 
         <div className="flex items-center gap-3">
@@ -78,12 +78,12 @@ export default function TailorDesignPage() {
         </div>
 
         {item.description && (
-          <p className="text-sm text-text-secondary leading-relaxed">{item.description}</p>
+          <p className="text-sm text-muted-foreground leading-relaxed">{item.description}</p>
         )}
 
         {item.material && (
-          <div className="flex items-center gap-2 text-sm text-text-secondary">
-            <span className="font-medium text-text-primary">Fabric:</span>
+          <div className="flex items-center gap-2 text-sm text-muted-foreground">
+            <span className="font-medium text-foreground">Fabric:</span>
             {item.material}
           </div>
         )}
@@ -105,7 +105,7 @@ export default function TailorDesignPage() {
           </Button>
         </div>
 
-        <p className="text-xs text-text-secondary text-center">
+        <p className="text-xs text-muted-foreground text-center">
           Full payment upfront via M-Pesa. No balance on delivery.
         </p>
       </div>

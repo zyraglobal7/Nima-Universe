@@ -109,8 +109,8 @@ export default function MeasurementsPage() {
 
   if (!garmentType) {
     return (
-      <div className="max-w-lg mx-auto py-12 text-center space-y-4">
-        <p className="text-text-secondary">Invalid garment type.</p>
+      <div className="max-w-lg mx-auto px-4 py-12 text-center space-y-4">
+        <p className="text-muted-foreground">Invalid garment type.</p>
         <div className="flex gap-2 justify-center flex-wrap">
           {(['dress', 'trouser', 'skirt', 'top'] as GarmentType[]).map((t) => (
             <Button key={t} variant="outline" onClick={() => router.push(`/tailor/measurements/${t}`)}>
@@ -123,20 +123,20 @@ export default function MeasurementsPage() {
   }
 
   return (
-    <div className="max-w-lg mx-auto space-y-6 pb-20">
+    <div className="max-w-lg mx-auto px-4 pt-6 space-y-6 pb-20">
       <button
         onClick={() => router.back()}
-        className="flex items-center gap-1 text-sm text-text-secondary hover:text-text-primary transition-colors"
+        className="flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground transition-colors"
       >
         <ArrowLeft className="w-4 h-4" />
         Back
       </button>
 
       <div>
-        <h1 className="text-xl font-serif font-semibold text-text-primary">
+        <h1 className="text-xl font-serif font-semibold text-foreground">
           {GARMENT_LABELS[garmentType]} measurements
         </h1>
-        <p className="text-sm text-text-secondary mt-1">All values in centimetres (cm).</p>
+        <p className="text-sm text-muted-foreground mt-1">All values in centimetres (cm).</p>
       </div>
 
       <Tabs defaultValue="form">
@@ -149,7 +149,7 @@ export default function MeasurementsPage() {
           <div className="grid grid-cols-2 gap-3">
             {fields.map((field) => (
               <div key={field} className="space-y-1">
-                <Label htmlFor={field} className="text-xs text-text-secondary">
+                <Label htmlFor={field} className="text-xs text-muted-foreground">
                   {FIELD_LABELS[field] ?? field} (cm)
                 </Label>
                 <Input
@@ -185,8 +185,8 @@ export default function MeasurementsPage() {
             </p>
           </div>
 
-          <div className="rounded-lg border border-border bg-surface-2 p-8 text-center space-y-3">
-            <p className="text-sm text-text-secondary">
+          <div className="rounded-lg border border-border bg-surface-alt p-8 text-center space-y-3">
+            <p className="text-sm text-muted-foreground">
               Camera-based measurement scanning is coming soon. Use the Form tab in the meantime.
             </p>
           </div>

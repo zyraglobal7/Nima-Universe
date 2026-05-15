@@ -51,8 +51,8 @@ export default function TailorOrderDetailPage() {
   if (order === null) {
     return (
       <div className="max-w-lg mx-auto py-12 text-center space-y-3">
-        <Package className="w-12 h-12 text-text-secondary opacity-30 mx-auto" />
-        <p className="text-text-secondary">Order not found.</p>
+        <Package className="w-12 h-12 text-muted-foreground opacity-30 mx-auto" />
+        <p className="text-muted-foreground">Order not found.</p>
         <Button variant="ghost" onClick={() => router.push('/tailor/orders')}>View all orders</Button>
       </div>
     );
@@ -62,10 +62,10 @@ export default function TailorOrderDetailPage() {
   const isCancelled = order.status === 'cancelled';
 
   return (
-    <div className="max-w-lg mx-auto space-y-6 pb-20">
+    <div className="max-w-lg mx-auto px-4 pt-6 space-y-6 pb-20">
       <button
         onClick={() => router.push('/tailor/orders')}
-        className="flex items-center gap-1 text-sm text-text-secondary hover:text-text-primary transition-colors"
+        className="flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground transition-colors"
       >
         <ArrowLeft className="w-4 h-4" />
         All orders
@@ -74,10 +74,10 @@ export default function TailorOrderDetailPage() {
       {/* Header */}
       <div className="space-y-1">
         <div className="flex items-center gap-3">
-          <h1 className="text-xl font-serif font-semibold text-text-primary">{order.orderNumber}</h1>
+          <h1 className="text-xl font-serif font-semibold text-foreground">{order.orderNumber}</h1>
           {isCancelled && <Badge variant="destructive">Cancelled</Badge>}
         </div>
-        <p className="text-sm text-text-secondary">
+        <p className="text-sm text-muted-foreground">
           KES {order.retailPriceKES.toLocaleString()} · Deadline {new Date(order.deadlineDate).toLocaleDateString('en-KE', { day: 'numeric', month: 'long', year: 'numeric' })}
         </p>
       </div>
@@ -104,7 +104,7 @@ export default function TailorOrderDetailPage() {
             return (
               <div key={step.status} className="flex gap-4">
                 <div className="flex flex-col items-center">
-                  <div className={`mt-1 flex-shrink-0 ${isDone ? 'text-primary' : isCurrent ? 'text-primary' : 'text-text-secondary opacity-30'}`}>
+                  <div className={`mt-1 flex-shrink-0 ${isDone ? 'text-primary' : isCurrent ? 'text-primary' : 'text-muted-foreground opacity-30'}`}>
                     {isDone ? (
                       <CheckCircle2 className="w-5 h-5" />
                     ) : (
@@ -116,11 +116,11 @@ export default function TailorOrderDetailPage() {
                   )}
                 </div>
                 <div className={`pb-4 flex-1 ${isCurrent ? '' : ''}`}>
-                  <p className={`text-sm font-medium ${isDone || isCurrent ? 'text-text-primary' : 'text-text-secondary opacity-50'}`}>
+                  <p className={`text-sm font-medium ${isDone || isCurrent ? 'text-foreground' : 'text-muted-foreground opacity-50'}`}>
                     {step.label}
                   </p>
                   {ts && (
-                    <p className="text-xs text-text-secondary mt-0.5">
+                    <p className="text-xs text-muted-foreground mt-0.5">
                       {new Date(ts).toLocaleDateString('en-KE', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}
                     </p>
                   )}
