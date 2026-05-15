@@ -11,7 +11,7 @@ import {
   ApparelSearchBar,
 } from '@/components/discover';
 import { ApparelItemCard, type ApparelItem } from '@/components/discover/ApparelItemCard';
-import { Sparkles, User, Shirt, Loader2 } from 'lucide-react';
+import { Sparkles, User, Shirt, Loader2, Scissors } from 'lucide-react';
 import { MessagesIcon } from '@/components/messages/MessagesIcon';
 import { CartIcon } from '@/components/cart/CartIcon';
 import { ActivityIcon } from '@/components/activity/ActivityIcon';
@@ -594,6 +594,15 @@ function DiscoverPageContent() {
               {filter.label}
             </button>
           ))}
+
+          {/* Tailor — links to the dedicated tailor feed */}
+          <Link
+            href="/tailor/feed"
+            className="flex items-center gap-1.5 px-4 py-2 rounded-full text-sm font-medium whitespace-nowrap transition-all duration-200 bg-surface hover:bg-surface-alt text-foreground border border-border/50 hover:border-primary/30"
+          >
+            <Scissors className="w-3.5 h-3.5" />
+            Tailor
+          </Link>
 
           {/* Cancel button — only visible on Apparel tab when in selection mode */}
           {activeFilter === 'apparel' && isSelectionMode && (

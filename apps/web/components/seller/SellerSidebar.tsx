@@ -13,6 +13,9 @@ import {
   BarChart2,
   Sparkles,
   Plug,
+  Scissors,
+  Layers,
+  ClipboardList,
 } from 'lucide-react';
 import {
   Sidebar,
@@ -140,6 +143,38 @@ export function SellerSidebar() {
             </SidebarMenu>
           </SidebarGroupContent>
         </SidebarGroup>
+
+        {seller?.sellerType === 'tailor' && (
+          <SidebarGroup>
+            <SidebarGroupLabel>Tailor</SidebarGroupLabel>
+            <SidebarGroupContent>
+              <SidebarMenu>
+                {[
+                  { title: 'Tailor Dashboard', href: '/seller/tailor', icon: Scissors },
+                  { title: 'Fabrics', href: '/seller/tailor/fabrics', icon: Layers },
+                  { title: 'Tailor Orders', href: '/seller/tailor/orders', icon: ClipboardList },
+                ].map((item) => (
+                  <SidebarMenuItem key={item.href}>
+                    <SidebarMenuButton
+                      asChild
+                      isActive={
+                        item.href === '/seller/tailor'
+                          ? pathname === '/seller/tailor'
+                          : pathname.startsWith(item.href)
+                      }
+                      tooltip={item.title}
+                    >
+                      <Link href={item.href}>
+                        <item.icon className="size-4" />
+                        <span>{item.title}</span>
+                      </Link>
+                    </SidebarMenuButton>
+                  </SidebarMenuItem>
+                ))}
+              </SidebarMenu>
+            </SidebarGroupContent>
+          </SidebarGroup>
+        )}
       </SidebarContent>
 
       <SidebarFooter className="border-t border-sidebar-border">
