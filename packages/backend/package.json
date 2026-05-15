@@ -7,7 +7,10 @@
   },
   "scripts": {
     "dev": "convex dev",
-    "deploy": "convex deploy"
+    "deploy": "convex deploy",
+    "seed:tailors": "convex run seed/testTailors:run --no-push",
+    "seed:tailored": "convex run seed/tailoredDesigns:run --no-push",
+    "seed:all-tailor": "npm run seed:tailors && npm run seed:tailored"
   },
   "dependencies": {
     "@ai-sdk/openai": "^2.0.80",

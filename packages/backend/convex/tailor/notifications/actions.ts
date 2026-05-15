@@ -18,7 +18,7 @@ export const notifyTailorNewOrder = internalAction({
     ctx: ActionCtx,
     args: { tailoredOrderId: Id<'tailoredOrders'> }
   ): Promise<null> => {
-    const order = await ctx.runQuery(internal.tailor.tailoredOrders.queries.getById, {
+    const order = await ctx.runQuery(internal.tailor.tailoredOrders.queries.getByIdInternal, {
       tailoredOrderId: args.tailoredOrderId,
     });
     if (!order) {

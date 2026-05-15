@@ -163,6 +163,17 @@ export const getById = query({
   },
 });
 
+export const getByIdInternal = internalQuery({
+  args: { tailoredOrderId: v.id('tailoredOrders') },
+  returns: v.union(orderObject, v.null()),
+  handler: async (
+    ctx: QueryCtx,
+    args: { tailoredOrderId: Id<'tailoredOrders'> }
+  ): Promise<Doc<'tailoredOrders'> | null> => {
+    return ctx.db.get(args.tailoredOrderId);
+  },
+});
+
 // Admin: orders awaiting payout release (qc_passed, 24h+ elapsed, not yet paid out)
 export const getPendingPayouts = internalQuery({
   args: {},
