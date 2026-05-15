@@ -135,6 +135,17 @@ export const getCurrentSeller = query({
       bannerUrl: v.optional(v.string()),
       tryOnCredits: v.optional(v.number()),
       watermarkEnabled: v.optional(v.boolean()),
+      sellerType: v.optional(v.union(v.literal('ready_made'), v.literal('tailor'))),
+      weeklyCapacity: v.optional(v.number()),
+      skillTags: v.optional(v.array(v.string())),
+      turnaroundDays: v.optional(v.object({
+        casual: v.number(),
+        formal: v.number(),
+        traditional: v.number(),
+        structured: v.number(),
+      })),
+      laborPricing: v.optional(v.array(v.object({ garmentType: v.string(), priceKES: v.number() }))),
+      inventoryLastRefreshedAt: v.optional(v.number()),
     }),
     v.null()
   ),
