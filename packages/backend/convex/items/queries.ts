@@ -48,6 +48,7 @@ const itemValidator = v.object({
   stockQuantity: v.optional(v.number()),
   isActive: v.boolean(),
   isFeatured: v.optional(v.boolean()),
+  kind: v.optional(v.union(v.literal('ready_made'), v.literal('tailored_design'))),
   sellerId: v.optional(v.id('sellers')),
   viewCount: v.optional(v.number()),
   saveCount: v.optional(v.number()),
@@ -97,6 +98,40 @@ export const getItemByPublicId = query({
     if (!item || !item.isActive) {
       return null;
     }
+    return item;
+  },
+});
+
+/**
+ * List tailored designs for the tailor feed
+ */
+export const getTailoredDesigns = query({
+  args: { limit: v.optional(v.number()) },
+  returns: v.array(itemValidator),
+  handler: async (
+    ctx: QueryCtx,
+    args: { limit?: number }
+  ): Promise<Doc<'items'>[]> => {
+    const all = await ctx.db
+      .query('items')
+      .withIndex('by_active_and_category', (q) => q.eq('isActive', true))
+      .order('desc')
+      .collect();
+
+    const designs = all.filter((i) => i.kind === 'tailored_design');
+    return designs.slice(0, args.limit ?? 50);
+  },
+});
+
+/**
+ * Get a single tailored design by ID (any user, must be active)
+ */
+export const getTailoredDesign = query({
+  args: { itemId: v.id('items') },
+  returns: v.union(itemValidator, v.null()),
+  handler: async (ctx: QueryCtx, args: { itemId: Id<'items'> }): Promise<Doc<'items'> | null> => {
+    const item = await ctx.db.get(args.itemId);
+    if (!item || !item.isActive || item.kind !== 'tailored_design') return null;
     return item;
   },
 });

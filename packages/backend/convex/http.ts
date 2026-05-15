@@ -428,10 +428,16 @@ http.route({
       const isOrderPayment = (merchantTransactionId as string).startsWith('nima_ord_');
       const isCreditPurchase = (merchantTransactionId as string).startsWith('nima_cr_');
       const isSubscription = (merchantTransactionId as string).startsWith('nima_sub_');
+      const isTailoredOrder = (merchantTransactionId as string).startsWith('nima_tord_');
 
       if (isCompleted) {
         console.log(`[FINGO WEBHOOK] Payment completed: ${merchantTransactionId}`);
-        if (isOrderPayment) {
+        if (isTailoredOrder) {
+          await ctx.runMutation(internal.tailor.tailoredOrders.mutations.completeTailoredOrderPayment, {
+            merchantTransactionId: merchantTransactionId as string,
+            fingoTransactionId: fingoTransactionId as string,
+          });
+        } else if (isOrderPayment) {
           await ctx.runMutation(internal.orders.mutations.completeOrderPayment, {
             merchantTransactionId: merchantTransactionId as string,
             fingoTransactionId: fingoTransactionId as string,
@@ -451,7 +457,12 @@ http.route({
       } else if (isFailed) {
         const reason = (data.failureReason || payload.failureReason || 'Payment failed').toString();
         console.log(`[FINGO WEBHOOK] Payment failed: ${merchantTransactionId} - ${reason}`);
-        if (isOrderPayment) {
+        if (isTailoredOrder) {
+          await ctx.runMutation(internal.tailor.tailoredOrders.mutations.failTailoredOrderPayment, {
+            merchantTransactionId: merchantTransactionId as string,
+            reason,
+          });
+        } else if (isOrderPayment) {
           await ctx.runMutation(internal.orders.mutations.failOrderPayment, {
             merchantTransactionId: merchantTransactionId as string,
             reason,
@@ -470,7 +481,7 @@ http.route({
         }
       } else {
         // Unknown event type - log it but acknowledge
-        console.log(`[FINGO WEBHOOK] Unhandled event type: ${eventType}, status: ${status}, isOrder: ${isOrderPayment}, isCredit: ${isCreditPurchase}, isSubscription: ${isSubscription}`);
+        console.log(`[FINGO WEBHOOK] Unhandled event type: ${eventType}, status: ${status}, isOrder: ${isOrderPayment}, isCredit: ${isCreditPurchase}, isSubscription: ${isSubscription}, isTailoredOrder: ${isTailoredOrder}`);
       }
 
       return addCorsHeaders(

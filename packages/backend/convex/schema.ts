@@ -222,6 +222,9 @@ export default defineSchema({
     isActive: v.boolean(),
     isFeatured: v.optional(v.boolean()),
 
+    // Tailor feature: distinguishes ready-made vs. made-to-measure designs
+    kind: v.optional(v.union(v.literal('ready_made'), v.literal('tailored_design'))),
+
     // Performance metrics (for seller dashboard)
     viewCount: v.optional(v.number()),
     saveCount: v.optional(v.number()),
@@ -793,6 +796,22 @@ export default defineSchema({
     // Settings
     watermarkEnabled: v.optional(v.boolean()),
 
+    // Tailor-specific fields (only populated when sellerType === 'tailor')
+    sellerType: v.optional(v.union(v.literal('ready_made'), v.literal('tailor'))),
+    weeklyCapacity: v.optional(v.number()),
+    skillTags: v.optional(v.array(v.string())),
+    turnaroundDays: v.optional(v.object({
+      casual: v.number(),
+      formal: v.number(),
+      traditional: v.number(),
+      structured: v.number(),
+    })),
+    laborPricing: v.optional(v.array(v.object({
+      garmentType: v.string(),
+      priceKES: v.number(),
+    }))),
+    inventoryLastRefreshedAt: v.optional(v.number()),
+
     // Timestamps
     createdAt: v.number(),
     updatedAt: v.number(),
@@ -800,7 +819,8 @@ export default defineSchema({
     .index('by_user', ['userId'])
     .index('by_slug', ['slug'])
     .index('by_verification_status', ['verificationStatus'])
-    .index('by_tier', ['tier']),
+    .index('by_tier', ['tier'])
+    .index('by_seller_type', ['sellerType']),
 
   // ============================================
   // ORDERS
@@ -1344,5 +1364,98 @@ export default defineSchema({
     .index('by_user_and_status', ['userId', 'status'])
     .index('by_user_and_created', ['userId', 'createdAt'])
     .index('by_expires', ['expiresAt']),
+
+  // ============================================
+  // NIMA TAILOR — FABRIC STOCK
+  // ============================================
+
+  fabrics: defineTable({
+    sellerId: v.id('sellers'),
+    sku: v.string(),
+    fabricType: v.string(),
+    primaryColor: v.string(),
+    pattern: v.string(),
+    metersAvailable: v.number(),
+    metersReserved: v.number(),
+    pricePerMeterKES: v.number(),
+    restockable: v.boolean(),
+    photoStorageIds: v.array(v.id('_storage')),
+    status: v.union(
+      v.literal('active'),
+      v.literal('low_stock'),
+      v.literal('depleted'),
+      v.literal('retired')
+    ),
+    qcVerifiedAt: v.optional(v.number()),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  })
+    .index('by_sellerId', ['sellerId'])
+    .index('by_status', ['status']),
+
+  // ============================================
+  // NIMA TAILOR — TAILORED ORDERS
+  // ============================================
+
+  tailoredOrders: defineTable({
+    orderNumber: v.string(),
+    userId: v.id('users'),
+    sellerId: v.id('sellers'),
+    itemId: v.id('items'),
+    measurementSnapshot: v.any(),
+    status: v.union(
+      v.literal('payment_pending'),
+      v.literal('paid'),
+      v.literal('acknowledged'),
+      v.literal('fabric_sourced'),
+      v.literal('cut'),
+      v.literal('stitched'),
+      v.literal('qc_pending'),
+      v.literal('qc_passed'),
+      v.literal('qc_failed'),
+      v.literal('dispatched'),
+      v.literal('delivered'),
+      v.literal('cancelled')
+    ),
+    statusHistory: v.array(v.object({
+      status: v.string(),
+      at: v.number(),
+      note: v.optional(v.string()),
+    })),
+    retailPriceKES: v.number(),
+    tailorPayoutKES: v.number(),
+    deadlineDate: v.number(),
+    mpesaPhoneNumber: v.string(),
+    merchantTransactionId: v.string(),
+    mpesaTransactionId: v.optional(v.string()),
+    payoutMpesaTransactionId: v.optional(v.string()),
+    payoutReleasedAt: v.optional(v.number()),
+    createdAt: v.number(),
+  })
+    .index('by_userId', ['userId'])
+    .index('by_sellerId', ['sellerId'])
+    .index('by_status', ['status'])
+    .index('by_orderNumber', ['orderNumber'])
+    .index('by_merchantTransactionId', ['merchantTransactionId']),
+
+  // ============================================
+  // NIMA TAILOR — MEASUREMENTS
+  // ============================================
+
+  measurements: defineTable({
+    userId: v.id('users'),
+    garmentType: v.union(
+      v.literal('dress'),
+      v.literal('trouser'),
+      v.literal('skirt'),
+      v.literal('top')
+    ),
+    values: v.any(),
+    source: v.union(v.literal('form_upload'), v.literal('cv_landmarking')),
+    confidenceScore: v.optional(v.number()),
+    createdAt: v.number(),
+  })
+    .index('by_userId', ['userId'])
+    .index('by_userId_and_garmentType', ['userId', 'garmentType']),
 
 });
