@@ -17,6 +17,7 @@ import {
   Layers,
   ClipboardList,
   ArrowRight,
+  ImageIcon,
 } from 'lucide-react';
 import {
   Sidebar,
@@ -38,7 +39,7 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 const navItems = [
   {
     title: 'Dashboard',
-    href: '/seller',
+    href: '/seller/dashboard',
     icon: LayoutDashboard,
   },
   {
@@ -88,7 +89,7 @@ export function SellerSidebar() {
         <SidebarMenu>
           <SidebarMenuItem>
             <SidebarMenuButton size="lg" asChild>
-              <Link href="/seller">
+              <Link href="/seller/dashboard">
                 {seller?.logoUrl ? (
                   <Avatar className="size-8">
                     <AvatarImage src={seller.logoUrl} alt={seller.shopName} />
@@ -122,8 +123,8 @@ export function SellerSidebar() {
             <SidebarMenu>
               {navItems.map((item) => {
                 const isActive =
-                  item.href === '/seller'
-                    ? pathname === '/seller'
+                  item.href === '/seller/dashboard'
+                    ? pathname === '/seller/dashboard'
                     : pathname.startsWith(item.href);
 
                 return (
@@ -152,6 +153,7 @@ export function SellerSidebar() {
               <SidebarMenu>
                 {[
                   { title: 'Tailor Dashboard', href: '/seller/tailor', icon: Scissors },
+                  { title: 'Inspirations', href: '/seller/tailor/inspirations', icon: ImageIcon },
                   { title: 'Fabrics', href: '/seller/tailor/fabrics', icon: Layers },
                   { title: 'Tailor Orders', href: '/seller/tailor/orders', icon: ClipboardList },
                 ].map((item) => (

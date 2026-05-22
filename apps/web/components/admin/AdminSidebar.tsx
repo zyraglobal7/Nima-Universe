@@ -14,6 +14,7 @@ import {
   Store,
   CreditCard,
   Plug,
+  Image,
 } from 'lucide-react';
 import {
   Sidebar,
@@ -62,6 +63,11 @@ const navItems = [
     href: '/admin/orders',
     icon: ShoppingCart,
     disabled: true,
+  },
+  {
+    title: 'Inspirations',
+    href: '/admin/inspirations',
+    icon: Image,
   },
   {
     title: 'Sellers',

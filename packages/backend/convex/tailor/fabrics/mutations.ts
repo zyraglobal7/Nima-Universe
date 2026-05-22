@@ -2,6 +2,14 @@ import { mutation, internalMutation, MutationCtx } from '../../_generated/server
 import { v } from 'convex/values';
 import type { Id } from '../../_generated/dataModel';
 
+export const generateUploadUrl = mutation({
+  args: {},
+  returns: v.string(),
+  handler: async (ctx: MutationCtx): Promise<string> => {
+    return await ctx.storage.generateUploadUrl();
+  },
+});
+
 function generateFabricSku(fabricType: string, primaryColor: string, metersAvailable: number): string {
   const typeCode = fabricType.slice(0, 3).toUpperCase();
   const colorCode = primaryColor.replace('#', '').slice(0, 6).toUpperCase();

@@ -15,9 +15,9 @@ export function SellerGuard({ children }: SellerGuardProps) {
   const seller = useQuery(api.sellers.queries.getCurrentSeller);
 
   useEffect(() => {
-    // If the query has resolved and user doesn't have a seller profile, redirect to onboarding
+    // If the query has resolved and user doesn't have a seller profile, redirect to landing
     if (seller === null) {
-      router.push('/seller/onboarding');
+      router.push('/seller');
     }
   }, [seller, router]);
 

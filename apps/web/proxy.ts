@@ -39,6 +39,8 @@ export default authkitMiddleware({
       '/connect/(.*)',
       // Seller try-on pages (public, customer-facing)
       '/(.*)/try-on/(.*)',
+      // Seller & tailor landing page (marketing, unauthenticated)
+      '/seller',
     ],
   },
 });

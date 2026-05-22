@@ -358,3 +358,112 @@ export const generateGhostMannequin = action({
   },
 });
 
+const inspirationDetailsSchema = z.object({
+  title: z.string().describe('A short, evocative style title (3-6 words, e.g. "Floral wrap midi dress")'),
+  description: z
+    .string()
+    .describe('A 1-2 sentence description of this style suitable for a tailor portfolio'),
+  tags: z
+    .array(z.string())
+    .describe('4-8 lowercase style tags (e.g. ["floral", "midi", "feminine", "summer"])'),
+});
+
+export const generateInspirationDetails = action({
+  args: { imageUrl: v.string() },
+  returns: v.object({
+    success: v.boolean(),
+    title: v.optional(v.string()),
+    description: v.optional(v.string()),
+    tags: v.optional(v.array(v.string())),
+    error: v.optional(v.string()),
+  }),
+  handler: async (
+    _ctx: ActionCtx,
+    args: { imageUrl: string }
+  ): Promise<{ success: boolean; title?: string; description?: string; tags?: string[]; error?: string }> => {
+    try {
+      const result = await generateObject({
+        model: openai('gpt-4o'),
+        schema: inspirationDetailsSchema,
+        schemaName: 'InspirationDetails',
+        schemaDescription: 'Style details extracted from a fashion inspiration image',
+        messages: [
+          {
+            role: 'system',
+            content: `You are a Nairobi-based fashion stylist. Analyze this inspiration image and extract style details tailored to the East African fashion market. Use descriptive, evocative language.`,
+          },
+          {
+            role: 'user',
+            content: [
+              { type: 'text', text: 'Analyze this style inspiration image and return the title, description, and tags.' },
+              { type: 'image', image: args.imageUrl },
+            ],
+          },
+        ],
+        temperature: 0.4,
+      });
+      return { success: true, ...result.object };
+    } catch (error) {
+      return { success: false, error: error instanceof Error ? error.message : 'AI analysis failed' };
+    }
+  },
+});
+
+const fabricDetailsSchema = z.object({
+  fabricType: z
+    .enum(['ankara', 'kitenge', 'cotton', 'linen', 'denim', 'silk', 'lace', 'other'])
+    .describe('The fabric type'),
+  pattern: z
+    .enum(['solid', 'floral', 'geometric', 'tribal', 'stripes', 'checks', 'abstract'])
+    .describe('The primary pattern'),
+  primaryColor: z
+    .string()
+    .describe('The dominant color as a hex code (e.g. "#4A90E2")'),
+  description: z
+    .string()
+    .optional()
+    .describe('A 1-sentence description of this fabric'),
+});
+
+export const analyzeFabricImage = action({
+  args: { imageUrl: v.string() },
+  returns: v.object({
+    success: v.boolean(),
+    fabricType: v.optional(v.string()),
+    pattern: v.optional(v.string()),
+    primaryColor: v.optional(v.string()),
+    description: v.optional(v.string()),
+    error: v.optional(v.string()),
+  }),
+  handler: async (
+    _ctx: ActionCtx,
+    args: { imageUrl: string }
+  ): Promise<{ success: boolean; fabricType?: string; pattern?: string; primaryColor?: string; description?: string; error?: string }> => {
+    try {
+      const result = await generateObject({
+        model: openai('gpt-4o'),
+        schema: fabricDetailsSchema,
+        schemaName: 'FabricDetails',
+        schemaDescription: 'Fabric details extracted from a photo',
+        messages: [
+          {
+            role: 'system',
+            content: `You are a fabric specialist. Analyze this fabric photo and extract its type, pattern, and dominant color. Focus on East African fabrics like ankara, kitenge, etc.`,
+          },
+          {
+            role: 'user',
+            content: [
+              { type: 'text', text: 'What type of fabric is this? Return the fabric type, pattern, and primary color as a hex code.' },
+              { type: 'image', image: args.imageUrl },
+            ],
+          },
+        ],
+        temperature: 0.2,
+      });
+      return { success: true, ...result.object };
+    } catch (error) {
+      return { success: false, error: error instanceof Error ? error.message : 'AI analysis failed' };
+    }
+  },
+});
+

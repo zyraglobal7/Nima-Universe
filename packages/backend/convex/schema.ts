@@ -1439,6 +1439,33 @@ export default defineSchema({
     .index('by_merchantTransactionId', ['merchantTransactionId']),
 
   // ============================================
+  // NIMA TAILOR — INSPIRATIONS
+  // ============================================
+
+  tailorInspirations: defineTable({
+    storageId: v.id('_storage'),
+    imageUrl: v.optional(v.string()),
+    title: v.string(),
+    description: v.optional(v.string()),
+    tags: v.array(v.string()),
+    isActive: v.boolean(),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  })
+    .index('by_active', ['isActive']),
+
+  tailorInspirationChoices: defineTable({
+    sellerId: v.id('sellers'),
+    inspirationId: v.id('tailorInspirations'),
+    choice: v.union(v.literal('accept'), v.literal('skip')),
+    createdAt: v.number(),
+  })
+    .index('by_seller', ['sellerId'])
+    .index('by_seller_and_inspiration', ['sellerId', 'inspirationId'])
+    .index('by_inspiration', ['inspirationId'])
+    .index('by_inspiration_and_choice', ['inspirationId', 'choice']),
+
+  // ============================================
   // NIMA TAILOR — MEASUREMENTS
   // ============================================
 
