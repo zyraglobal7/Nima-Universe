@@ -52,7 +52,7 @@ export function ProfileHeader({ onEdit }: ProfileHeaderProps) {
             {currentUser.email}
           </Text>
           <View className="flex-row items-center gap-2 mt-2">
-            <View className="bg-secondary dark:bg-secondary-dark self-start px-3 py-1 rounded-full">
+            {/* <View className="bg-secondary dark:bg-secondary-dark self-start px-3 py-1 rounded-full">
               <Text className="text-xs text-white dark:text-secondary-dark-foreground font-medium capitalize">
                 {currentUser.subscriptionTier === "style_pass"
                   ? "Style Pass"
@@ -60,7 +60,7 @@ export function ProfileHeader({ onEdit }: ProfileHeaderProps) {
                     ? "VIP"
                     : "Free Plan"}
               </Text>
-            </View>
+            </View> */}
             {/* Credits Badge */}
             <TouchableOpacity
               onPress={() => setShowCreditsModal(true)}

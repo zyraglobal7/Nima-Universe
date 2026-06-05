@@ -7,6 +7,7 @@ import { ChatBubble } from "./ChatBubble";
 import { useRouter } from "expo-router";
 import { launchWorkOSAuth } from "@/lib/auth";
 import { useTheme } from "@/lib/contexts/ThemeContext";
+import * as WebBrowser from "expo-web-browser";
 
 interface GateSplashProps {
   /** @deprecated No longer used — auth is initiated directly from the splash */
@@ -158,13 +159,29 @@ export function GateSplash({ onGetStarted }: GateSplashProps) {
           </View>
 
           {/* Actions */}
-          <View className="w-full max-w-[18rem]">
+          <View className="w-full max-w-[18rem] items-center gap-4">
             <Button
               size="lg"
-              label="Continue with Google"
+              label="Sign In"
               onPress={handleSignIn}
               className="w-full dark:bg-primary-dark"
             />
+            <Text className="text-xs text-muted-foreground dark:text-muted-dark-foreground text-center">
+              By continuing, you agree to our{" "}
+              <Text
+                className="text-secondary dark:text-secondary-dark underline"
+                onPress={() => WebBrowser.openBrowserAsync("https://www.shopnima.ai/termsAndConditions")}
+              >
+                Terms of Service
+              </Text>
+              {" "}and{" "}
+              <Text
+                className="text-secondary dark:text-secondary-dark underline"
+                onPress={() => WebBrowser.openBrowserAsync("https://www.shopnima.ai/privacyPolicy")}
+              >
+                Privacy Policy
+              </Text>
+            </Text>
           </View>
         </Animated.View>
       </View>

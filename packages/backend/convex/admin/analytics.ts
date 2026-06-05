@@ -531,6 +531,119 @@ export const getTryOnAnalytics = query({
 });
 
 // =============================================================================
+// SELLER TRY-ON ANALYTICS (customer try-ons via seller share links)
+// =============================================================================
+
+/**
+ * Analytics for try-ons triggered from seller try-on links
+ * (the public /[storeName]/try-on/[productId] page). Tracks volume, per-item
+ * counts, and which website/source customers came from.
+ */
+export const getSellerTryOnAnalytics = query({
+  args: {
+    startDate: v.number(),
+    endDate: v.number(),
+  },
+  returns: v.object({
+    total: v.number(),
+    completed: v.number(),
+    failed: v.number(),
+    pending: v.number(),
+    successRate: v.number(),
+    bySource: v.array(v.object({ source: v.string(), count: v.number() })),
+    topItems: v.array(
+      v.object({ itemId: v.string(), name: v.string(), shop: v.string(), count: v.number() })
+    ),
+    trend: v.array(v.object({ date: v.string(), count: v.number() })),
+  }),
+  handler: async (
+    ctx: QueryCtx,
+    args: { startDate: number; endDate: number }
+  ): Promise<{
+    total: number;
+    completed: number;
+    failed: number;
+    pending: number;
+    successRate: number;
+    bySource: Array<{ source: string; count: number }>;
+    topItems: Array<{ itemId: string; name: string; shop: string; count: number }>;
+    trend: Array<{ date: string; count: number }>;
+  }> => {
+    const { startDate, endDate } = args;
+
+    const allTryOns = await ctx.db.query('seller_try_ons').collect();
+    const periodTryOns = allTryOns.filter(
+      (t) => t.createdAt >= startDate && t.createdAt <= endDate
+    );
+
+    const completed = periodTryOns.filter((t) => t.status === 'completed').length;
+    const failed = periodTryOns.filter((t) => t.status === 'failed').length;
+    const pending = periodTryOns.filter(
+      (t) => t.status === 'pending' || t.status === 'processing'
+    ).length;
+
+    // By source / website — prefer explicit utm_source, fall back to referrer host
+    const sourceCount: Record<string, number> = {};
+    for (const tryOn of periodTryOns) {
+      const source = tryOn.utmSource || tryOn.referrerHost || 'unknown';
+      sourceCount[source] = (sourceCount[source] || 0) + 1;
+    }
+    const bySource = Object.entries(sourceCount)
+      .map(([source, count]) => ({ source, count }))
+      .sort((a, b) => b.count - a.count);
+
+    // Top tried-on items (with their shop name)
+    const itemCount: Record<string, number> = {};
+    for (const tryOn of periodTryOns) {
+      itemCount[tryOn.itemId] = (itemCount[tryOn.itemId] || 0) + 1;
+    }
+    const sortedItemIds = Object.entries(itemCount)
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, 10);
+
+    const topItems = await Promise.all(
+      sortedItemIds.map(async ([itemId, count]) => {
+        const item = await ctx.db.get(itemId as Id<'items'>);
+        let shop = 'Unknown';
+        if (item?.sellerId) {
+          const seller = await ctx.db.get(item.sellerId);
+          if (seller) shop = seller.shopName;
+        }
+        return { itemId, name: item?.name || 'Unknown', shop, count };
+      })
+    );
+
+    // Trend
+    const dayMs = 24 * 60 * 60 * 1000;
+    const days = Math.ceil((endDate - startDate) / dayMs);
+    const trendMap: Record<string, number> = {};
+    for (let i = 0; i <= days; i++) {
+      const date = new Date(startDate + i * dayMs);
+      trendMap[date.toISOString().split('T')[0]] = 0;
+    }
+    for (const tryOn of periodTryOns) {
+      const dateStr = new Date(tryOn.createdAt).toISOString().split('T')[0];
+      if (trendMap[dateStr] !== undefined) trendMap[dateStr]++;
+    }
+    const trend = Object.entries(trendMap)
+      .map(([date, count]) => ({ date, count }))
+      .sort((a, b) => a.date.localeCompare(b.date));
+
+    return {
+      total: periodTryOns.length,
+      completed,
+      failed,
+      pending,
+      successRate:
+        periodTryOns.length > 0 ? Math.round((completed / periodTryOns.length) * 100) : 0,
+      bySource,
+      topItems,
+      trend,
+    };
+  },
+});
+
+// =============================================================================
 // LOOKS ANALYTICS
 // =============================================================================
 

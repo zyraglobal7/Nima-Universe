@@ -52,6 +52,14 @@ Sentry.init({
 // Re-export as Expo Router's route-level ErrorBoundary
 export { RouteErrorBoundary as ErrorBoundary } from "@/components/ErrorBoundary";
 
+// Anchor the root Stack on `index` so "/" renders the landing/gate screen.
+// Without this, the first-declared screen — the (tabs) group — was treated as
+// the root's initial route, so an unauthenticated user at "/" got the tabs
+// overlay forever instead of the GateSplash.
+export const unstable_settings = {
+  initialRouteName: "index",
+};
+
 // Keep splash screen visible while fonts load
 SplashScreen.preventAutoHideAsync();
 
@@ -88,7 +96,8 @@ function LayoutContent() {
     pathname !== "/callback" &&
     !pathname.includes("/fitting/") &&
     !pathname?.startsWith("/(auth)") &&
-    !pathname?.includes("/category/");
+    !pathname?.includes("/category/") &&
+    pathname !== "/discarded-looks";
 
   const backgroundColor = isDark ? "#1A1614" : "#FAF8F5";
 
@@ -111,6 +120,14 @@ function LayoutContent() {
             animation: "slide_from_right",
           }}
         >
+          {/* Landing Page — declared first so it anchors the root stack */}
+          <Stack.Screen
+            name="index"
+            options={{
+              headerShown: false,
+            }}
+          />
+
           {/* Tab navigator */}
           <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
 
@@ -120,14 +137,6 @@ function LayoutContent() {
             options={{
               headerShown: false, // Explicitly hidden
               gestureEnabled: false,
-            }}
-          />
-
-          {/* Landing Page */}
-          <Stack.Screen
-            name="index"
-            options={{
-              headerShown: false,
             }}
           />
 
@@ -176,6 +185,7 @@ function LayoutContent() {
           />
           <Stack.Screen name="activity" options={{ headerShown: false }} />
           <Stack.Screen name="explore" options={{ headerShown: false }} />
+          <Stack.Screen name="discarded-looks" options={{ headerShown: false }} />
         </Stack>
       </SelectionProvider>
     </UserProvider>

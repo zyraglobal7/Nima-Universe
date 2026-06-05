@@ -1,6 +1,7 @@
 import { query, QueryCtx } from '../_generated/server';
 import { v } from 'convex/values';
 import type { Id } from '../_generated/dataModel';
+import { getBlockedUserIdSet } from '../moderation/queries';
 
 /**
  * Get all friends for the current user (accepted status)
@@ -63,12 +64,34 @@ export const getFriends = query({
       .filter((q) => q.eq(q.field('status'), 'accepted'))
       .collect();
 
-    // Combine and get friend user data
+    // Combine both directions. A friendship where the user is somehow both
+    // requester and addressee (self-friendship from bad/seed data) would appear
+    // in both lists — dedupe by friendship _id so the client never receives two
+    // rows with the same key. Also skip self-friendships entirely.
+    const byFriendshipId = new Map<
+      Id<'friendships'>,
+      { friendship: (typeof asRequester)[number]; friendId: Id<'users'>; isRequester: boolean }
+    >();
+    for (const f of asRequester) {
+      if (f.addresseeId === user._id) continue; // self-friendship — skip
+      if (!byFriendshipId.has(f._id)) {
+        byFriendshipId.set(f._id, { friendship: f, friendId: f.addresseeId, isRequester: true });
+      }
+    }
+    for (const f of asAddressee) {
+      if (f.requesterId === user._id) continue; // self-friendship — skip
+      if (!byFriendshipId.has(f._id)) {
+        byFriendshipId.set(f._id, { friendship: f, friendId: f.requesterId, isRequester: false });
+      }
+    }
+
+    // Hide blocked users (either direction) from the friends list.
+    const blocked = await getBlockedUserIdSet(ctx, user._id);
+
+    // Get friend user data
     const friends = await Promise.all(
-      [
-        ...asRequester.map((f) => ({ friendship: f, friendId: f.addresseeId, isRequester: true })),
-        ...asAddressee.map((f) => ({ friendship: f, friendId: f.requesterId, isRequester: false })),
-      ].map(async ({ friendship, friendId, isRequester }) => {
+      [...byFriendshipId.values()].map(async ({ friendship, friendId, isRequester }) => {
+        if (blocked.has(friendId)) return null;
         const friend = await ctx.db.get(friendId);
         if (!friend) {
           return null;

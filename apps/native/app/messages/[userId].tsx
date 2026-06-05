@@ -13,6 +13,7 @@ import { useTheme } from "@/lib/contexts/ThemeContext";
 import { useQuery, useMutation } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import { Sparkles, ChevronLeft } from "lucide-react-native";
+import { ModerationMenu } from "@/components/moderation/ModerationMenu";
 import Animated, { FadeInUp } from "react-native-reanimated";
 import type { Id } from "@/convex/_generated/dataModel";
 
@@ -76,7 +77,11 @@ export default function MessageDetailScreen() {
 
   // Mark as read when opening conversation
   useEffect(() => {
-    if (otherUserId && messages && messages.some((m) => !m.isRead && !m.sentByMe)) {
+    if (
+      otherUserId &&
+      messages &&
+      messages.some((m: { isRead: boolean; sentByMe: boolean }) => !m.isRead && !m.sentByMe)
+    ) {
       markAsRead({ otherUserId }).catch(() => {
         // Ignore errors
       });
@@ -231,7 +236,7 @@ export default function MessageDetailScreen() {
       {/* Header */}
       <View
         style={{ paddingTop: insets.top + 10 }}
-        className="flex-row items-center px-4 pb-3 border-b border-border dark:border-border-dark"
+        className="flex-row items-center justify-between px-4 pb-3 border-b border-border dark:border-border-dark"
       >
         <TouchableOpacity
           onPress={() => router.back()}
@@ -239,6 +244,14 @@ export default function MessageDetailScreen() {
         >
           <ChevronLeft size={22} color={isDark ? "#E8E2DA" : "#2D2926"} />
         </TouchableOpacity>
+
+        {otherUserId && (
+          <ModerationMenu
+            targetUserId={otherUserId}
+            color={isDark ? "#8C8078" : "#9C948A"}
+            onBlocked={() => router.back()}
+          />
+        )}
       </View>
 
       {/* Content */}

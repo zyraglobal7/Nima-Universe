@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { View, Text, Switch, TouchableOpacity, ScrollView } from "react-native";
+import { View, Text, Switch, TouchableOpacity, ScrollView, Alert, Platform } from "react-native";
 import { useTheme } from "@/lib/contexts/ThemeContext";
 import {
   Moon,
@@ -10,12 +10,12 @@ import {
   Lock,
   LogOut,
   ShoppingBag,
+  type LucideIcon,
 } from "lucide-react-native";
 import { router } from "expo-router";
 import { callLogout } from "@/lib/auth";
-import { useQuery, useMutation } from "convex/react";
+import { useQuery, useMutation, useAction } from "convex/react";
 import { api } from "@/convex/_generated/api";
-import { Platform } from "react-native";
 import Constants from "expo-constants";
 import { CreditsModal } from "@/components/credits/CreditsModal";
 
@@ -24,8 +24,10 @@ const isExpoGo = Constants.executionEnvironment === "storeClient";
 export function SettingsTab() {
   const { isDark, setTheme } = useTheme();
   const [creditsModalVisible, setCreditsModalVisible] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
   const currentUser = useQuery(api.users.queries.getCurrentUser);
   const removePushToken = useMutation(api.notifications.mutations.removePushToken);
+  const deleteMyAccount = useAction(api.users.actions.deleteMyAccount);
 
   const toggleTheme = () => setTheme(isDark ? "light" : "dark");
 
@@ -54,27 +56,52 @@ export function SettingsTab() {
     }
   };
 
+  const handleDeleteAccount = () => {
+    Alert.alert(
+      "Delete Account",
+      "This will permanently delete your account and all your data — looks, try-ons, orders, and more. This cannot be undone.",
+      [
+        { text: "Cancel", style: "cancel" },
+        {
+          text: "Delete Account",
+          style: "destructive",
+          onPress: async () => {
+            setIsDeleting(true);
+            try {
+              await deleteMyAccount({});
+              await callLogout();
+              router.replace("/");
+            } catch {
+              Alert.alert("Error", "Could not delete your account. Please try again.");
+              setIsDeleting(false);
+            }
+          },
+        },
+      ]
+    );
+  };
+
   return (
     <ScrollView
       className="flex-1 bg-background dark:bg-background-dark"
       showsVerticalScrollIndicator={false}
     >
       {/* Settings Sections */}
-      <View className="gap-6 pb-20">
+      <View style={{ gap: 28 }} className="pb-20">
         {/* Appearance */}
         <View>
-          <Text className="text-lg font-serif font-medium text-foreground dark:text-foreground-dark mb-3">
-            Appearance
-          </Text>
-          <View className="bg-surface dark:bg-surface-dark rounded-xl overflow-hidden border border-border dark:border-border-dark">
-            <View className="flex-row items-center justify-between p-4">
-              <View className="flex-row items-center gap-3">
-                {isDark ? (
-                  <Moon size={20} color={isDark ? "#F5F0E8" : "#2D2926"} />
-                ) : (
-                  <Sun size={20} color={isDark ? "#F5F0E8" : "#2D2926"} />
-                )}
-                <Text className="text-base text-foreground dark:text-foreground-dark font-sans">
+          <SectionLabel>Appearance</SectionLabel>
+          <View className="bg-surface dark:bg-surface-dark rounded-2xl overflow-hidden border border-border dark:border-border-dark">
+            <View className="flex-row items-center justify-between px-4 py-3">
+              <View className="flex-row items-center" style={{ gap: 12 }}>
+                <IconTile isDark={isDark} variant="accent">
+                  {isDark ? (
+                    <Moon size={18} color={isDark ? "#C9A07A" : "#5C2A33"} />
+                  ) : (
+                    <Sun size={18} color={isDark ? "#C9A07A" : "#5C2A33"} />
+                  )}
+                </IconTile>
+                <Text className="text-[15px] font-medium text-foreground dark:text-foreground-dark font-sans">
                   Dark Mode
                 </Text>
               </View>
@@ -90,101 +117,58 @@ export function SettingsTab() {
 
         {/* Your Activity */}
         <View>
-          <Text className="text-lg font-serif font-medium text-foreground dark:text-foreground-dark mb-3">
-            Your Activity
-          </Text>
-          <View className="bg-surface dark:bg-surface-dark rounded-xl overflow-hidden border border-border dark:border-border-dark divide-y divide-border dark:divide-border-dark">
-            <TouchableOpacity
-              onPress={() => router.push("/profile/discarded-looks")}
-              className="flex-row items-center justify-between p-4"
-            >
-              <View className="flex-row items-center gap-3 flex-1">
-                <Trash2 size={24} color={isDark ? "#F5F0E8" : "#2D2926"} />
-                <View>
-                  <Text className="text-base font-medium text-foreground dark:text-foreground-dark font-serif">
-                    Discarded Looks
-                  </Text>
-                  <Text className="text-sm text-muted-foreground dark:text-muted-dark-foreground font-sans">
-                    View and restore discarded looks
-                  </Text>
-                </View>
-              </View>
-              <ChevronRight size={20} color={isDark ? "#8C8078" : "#9C948A"} />
-            </TouchableOpacity>
-
-            <TouchableOpacity
+          <SectionLabel>Your Activity</SectionLabel>
+          <View className="bg-surface dark:bg-surface-dark rounded-2xl overflow-hidden border border-border dark:border-border-dark divide-y divide-border dark:divide-border-dark">
+            <SettingsRow
+              isDark={isDark}
+              icon={Trash2}
+              title="Discarded Looks"
+              subtitle="View and restore discarded looks"
+              onPress={() => router.push("/discarded-looks")}
+            />
+            <SettingsRow
+              isDark={isDark}
+              icon={ShoppingBag}
+              title="My Orders"
+              subtitle="Track and manage your purchases"
               onPress={() => router.push("/orders")}
-              className="flex-row items-center justify-between p-4"
-            >
-              <View className="flex-row items-center gap-3 flex-1">
-                <ShoppingBag size={24} color={isDark ? "#F5F0E8" : "#2D2926"} />
-                <View>
-                  <Text className="text-base font-medium text-foreground dark:text-foreground-dark font-serif">
-                    My Orders
-                  </Text>
-                  <Text className="text-sm text-muted-foreground dark:text-muted-dark-foreground font-sans">
-                    Track and manage your purchases
-                  </Text>
-                </View>
-              </View>
-              <ChevronRight size={20} color={isDark ? "#8C8078" : "#9C948A"} />
-            </TouchableOpacity>
+            />
           </View>
         </View>
 
         {/* Account Settings */}
         <View>
-          <Text className="text-lg font-serif font-medium text-foreground dark:text-foreground-dark mb-3">
-            Account Settings
-          </Text>
-          <View className="bg-surface dark:bg-surface-dark rounded-xl overflow-hidden border border-border dark:border-border-dark divide-y divide-border dark:divide-border-dark">
-            <TouchableOpacity className="flex-row items-center justify-between p-4">
-              <View className="flex-row items-center gap-3 flex-1">
-                <Mail size={24} color={isDark ? "#F5F0E8" : "#2D2926"} />
-                <View>
-                  <Text className="text-base font-medium text-foreground dark:text-foreground-dark font-serif">
-                    Change Email
-                  </Text>
-                  <Text className="text-sm text-muted-foreground dark:text-muted-dark-foreground font-sans">
-                    {currentUser?.email || "No email set"}
-                  </Text>
-                </View>
-              </View>
-              <ChevronRight size={20} color={isDark ? "#8C8078" : "#9C948A"} />
-            </TouchableOpacity>
-
-            <TouchableOpacity className="flex-row items-center justify-between p-4">
-              <View className="flex-row items-center gap-3 flex-1">
-                <Lock size={24} color={isDark ? "#F5F0E8" : "#2D2926"} />
-                <View>
-                  <Text className="text-base font-medium text-foreground dark:text-foreground-dark font-serif">
-                    Change Password
-                  </Text>
-                  <Text className="text-sm text-muted-foreground dark:text-muted-dark-foreground font-sans">
-                    Managed via Google Account
-                  </Text>
-                </View>
-              </View>
-              <ChevronRight size={20} color={isDark ? "#8C8078" : "#9C948A"} />
-            </TouchableOpacity>
-
-            <TouchableOpacity
+          <SectionLabel>Account Settings</SectionLabel>
+          <View className="bg-surface dark:bg-surface-dark rounded-2xl overflow-hidden border border-border dark:border-border-dark divide-y divide-border dark:divide-border-dark">
+            <SettingsRow
+              isDark={isDark}
+              icon={Mail}
+              title="Change Email"
+              subtitle={currentUser?.email || "No email set"}
+            />
+            <SettingsRow
+              isDark={isDark}
+              icon={Lock}
+              title="Change Password"
+              subtitle="Managed via Google Account"
+            />
+            <SettingsRow
+              isDark={isDark}
+              icon={LogOut}
+              title="Log Out"
+              subtitle="Sign out of your account"
+              variant="destructive"
               onPress={handleSignOut}
-              className="flex-row items-center justify-between p-4"
-            >
-              <View className="flex-row items-center gap-3 flex-1">
-                <LogOut size={24} color={isDark ? "#D4807A" : "#B85C5C"} />
-                <View>
-                  <Text className="text-base font-medium text-destructive dark:text-destructive-dark font-serif">
-                    Log Out
-                  </Text>
-                  <Text className="text-sm text-muted-foreground dark:text-muted-dark-foreground font-sans">
-                    Sign out of your account
-                  </Text>
-                </View>
-              </View>
-              <ChevronRight size={20} color={isDark ? "#8C8078" : "#9C948A"} />
-            </TouchableOpacity>
+            />
+            <SettingsRow
+              isDark={isDark}
+              icon={Trash2}
+              title={isDeleting ? "Deleting…" : "Delete Account"}
+              subtitle="Permanently remove your account"
+              variant="destructive"
+              onPress={handleDeleteAccount}
+              disabled={isDeleting}
+            />
           </View>
         </View>
 
@@ -206,7 +190,7 @@ export function SettingsTab() {
             {currentUser?.subscriptionTier === "free" ? 5 : "Unlimited"} used
             today
           </Text>
-          {currentUser?.subscriptionTier === "free" && (
+          {currentUser?.subscriptionTier === "free" && Platform.OS !== "ios" && (
             <TouchableOpacity
               onPress={() => setCreditsModalVisible(true)}
               className="mt-3 py-2 bg-background dark:bg-background-dark border border-primary dark:border-primary-dark rounded-lg items-center"
@@ -224,5 +208,104 @@ export function SettingsTab() {
         onClose={() => setCreditsModalVisible(false)}
       />
     </ScrollView>
+  );
+}
+
+/* ─── Settings primitives ─────────────────────────────────────────────────── */
+
+function SectionLabel({ children }: { children: React.ReactNode }) {
+  return (
+    <Text
+      className="text-xs font-semibold uppercase text-muted-foreground dark:text-muted-dark-foreground font-sans mb-2.5 ml-1"
+      style={{ letterSpacing: 0.6 }}
+    >
+      {children}
+    </Text>
+  );
+}
+
+function IconTile({
+  isDark,
+  variant = "default",
+  children,
+}: {
+  isDark: boolean;
+  variant?: "default" | "accent" | "destructive";
+  children: React.ReactNode;
+}) {
+  const bg =
+    variant === "destructive"
+      ? isDark ? "rgba(212,128,122,0.14)" : "rgba(184,92,92,0.10)"
+      : variant === "accent"
+        ? isDark ? "rgba(201,160,122,0.16)" : "rgba(92,42,51,0.08)"
+        : isDark ? "#302B28" : "#EDE6DC";
+  return (
+    <View
+      style={{
+        width: 34,
+        height: 34,
+        borderRadius: 10,
+        alignItems: "center",
+        justifyContent: "center",
+        backgroundColor: bg,
+      }}
+    >
+      {children}
+    </View>
+  );
+}
+
+function SettingsRow({
+  isDark,
+  icon: Icon,
+  title,
+  subtitle,
+  onPress,
+  variant = "default",
+  disabled,
+}: {
+  isDark: boolean;
+  icon: LucideIcon;
+  title: string;
+  subtitle: string;
+  onPress?: () => void;
+  variant?: "default" | "destructive";
+  disabled?: boolean;
+}) {
+  const destructive = variant === "destructive";
+  const iconColor = destructive
+    ? isDark ? "#D4807A" : "#B85C5C"
+    : isDark ? "#8C8078" : "#9C948A";
+  const titleColor = destructive
+    ? isDark ? "#D4807A" : "#B85C5C"
+    : isDark ? "#F5F0E8" : "#2D2926";
+
+  return (
+    <TouchableOpacity
+      onPress={onPress}
+      disabled={disabled || !onPress}
+      activeOpacity={0.6}
+      className="flex-row items-center justify-between px-4 py-3"
+      style={{ opacity: disabled ? 0.5 : 1 }}
+    >
+      <View className="flex-row items-center flex-1" style={{ gap: 12 }}>
+        <IconTile isDark={isDark} variant={destructive ? "destructive" : "default"}>
+          <Icon size={18} color={iconColor} />
+        </IconTile>
+        <View className="flex-1">
+          <Text className="text-[15px] font-medium font-sans" style={{ color: titleColor }}>
+            {title}
+          </Text>
+          <Text
+            className="text-[13px] font-sans mt-0.5"
+            numberOfLines={1}
+            style={{ color: isDark ? "#8C8078" : "#9C948A" }}
+          >
+            {subtitle}
+          </Text>
+        </View>
+      </View>
+      <ChevronRight size={18} color={isDark ? "#5C554F" : "#C4BDB3"} />
+    </TouchableOpacity>
   );
 }

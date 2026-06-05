@@ -36,6 +36,9 @@ export const createSellerTryOn = mutation({
     sellerId: v.id('sellers'),
     itemId: v.id('items'),
     customerImageStorageId: v.id('_storage'),
+    referrerUrl: v.optional(v.string()),
+    referrerHost: v.optional(v.string()),
+    utmSource: v.optional(v.string()),
   },
   returns: v.union(
     v.object({
@@ -53,6 +56,9 @@ export const createSellerTryOn = mutation({
       sellerId: Id<'sellers'>;
       itemId: Id<'items'>;
       customerImageStorageId: Id<'_storage'>;
+      referrerUrl?: string;
+      referrerHost?: string;
+      utmSource?: string;
     }
   ): Promise<
     | { success: true; sellerTryOnId: Id<'seller_try_ons'> }
@@ -99,6 +105,9 @@ export const createSellerTryOn = mutation({
       itemId: args.itemId,
       customerImageStorageId: args.customerImageStorageId,
       status: 'pending',
+      referrerUrl: args.referrerUrl,
+      referrerHost: args.referrerHost,
+      utmSource: args.utmSource,
       createdAt: now,
       updatedAt: now,
     });

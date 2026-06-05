@@ -3,6 +3,32 @@ import { internal } from '../_generated/api';
 import { v } from 'convex/values';
 
 /**
+ * Generate (or regenerate) the current user's AI style profile on demand.
+ *
+ * Public wrapper around the internal onboarding `generateStyleProfile` action so
+ * the Profile screen can offer a "Generate" button when no profile exists yet.
+ * The internal action persists the result to the user record, so the reactive
+ * `getCurrentUser` query updates automatically once this resolves.
+ */
+export const generateMyStyleProfile = action({
+  args: {},
+  returns: v.string(),
+  handler: async (ctx: ActionCtx): Promise<string> => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) throw new Error('Not authenticated');
+
+    const userId = await ctx.runQuery(internal.users.queries.getUserIdByWorkosId, {
+      workosUserId: identity.subject,
+    });
+    if (!userId) throw new Error('User not found');
+
+    return await ctx.runAction(internal.workflows.actions.generateStyleProfile, {
+      userId,
+    });
+  },
+});
+
+/**
  * Delete the current user's account: purges all data from Convex, then removes
  * the user from WorkOS so they cannot log back in with the same credentials.
  */

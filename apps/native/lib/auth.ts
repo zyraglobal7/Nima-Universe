@@ -3,6 +3,7 @@ import { Platform } from 'react-native';
 import * as AuthSession from 'expo-auth-session';
 import * as WebBrowser from 'expo-web-browser';
 import * as Crypto from 'expo-crypto';
+import Constants, { ExecutionEnvironment } from 'expo-constants';
 import { ConvexHttpClient } from 'convex/browser';
 import { api } from '@/convex/_generated/api';
 import {
@@ -25,16 +26,12 @@ WebBrowser.maybeCompleteAuthSession();
 
 const WORKOS_CLIENT_ID = process.env.EXPO_PUBLIC_WORKOS_CLIENT_ID!;
 
-// Redirect URI selection:
-// - Use the env var if set (should be `shopnima://callback` for native,
-//   or `https://www.shopnima.ai/callback` for web production).
-// - On native, NEVER use an HTTPS URL — Android Chrome Custom Tabs won't
-//   intercept HTTPS redirects without matching intent filters, causing the
-//   browser to navigate to the real website. Always use the custom scheme.
-// - Fall back to AuthSession.makeRedirectUri() only when the env var is unset.
-//   NOTE: in Expo Go this produces a dynamic `exp://...` tunnel URL which must
-//   be registered in the WorkOS Dashboard to work.
-const REDIRECT_URI = process.env.EXPO_PUBLIC_WORKOS_REDIRECT_URI ||
+// In Expo Go, custom schemes (shopnima://) aren't registered, so the env var
+// is ignored and makeRedirectUri() generates the correct exp://... URL
+// automatically (LAN or tunnel, whichever the dev server is using).
+// In real builds the env var wins, preserving shopnima://callback in production.
+const isExpoGo = Constants.executionEnvironment === ExecutionEnvironment.StoreClient;
+const REDIRECT_URI = (!isExpoGo && process.env.EXPO_PUBLIC_WORKOS_REDIRECT_URI) ||
   AuthSession.makeRedirectUri({ scheme: 'shopnima', path: 'callback' });
 console.log('====================================');
 console.log('[AUTH] Redirect URI:', REDIRECT_URI);
@@ -193,7 +190,13 @@ export function useAuthFromWorkOS() {
           if (isTokenExpired(token)) {
             const storedRefreshToken = await getRefreshToken();
             if (storedRefreshToken) {
-              const refreshed = await refreshAccessToken(storedRefreshToken);
+              // Race the network refresh against a timeout so a slow/offline
+              // refresh can never hang `isLoading` forever (which would leave
+              // the user stuck on the launch loader with no redirect to "/").
+              const refreshed = await Promise.race([
+                refreshAccessToken(storedRefreshToken),
+                new Promise<null>((resolve) => setTimeout(() => resolve(null), 8000)),
+              ]);
               if (refreshed) {
                 await setAccessToken(refreshed.accessToken);
                 await setRefreshToken(refreshed.refreshToken);

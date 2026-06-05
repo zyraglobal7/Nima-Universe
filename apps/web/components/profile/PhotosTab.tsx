@@ -405,7 +405,7 @@ export function PhotosTab() {
           <div>
             <h4 className="text-sm font-medium text-foreground">Photo Tips</h4>
             <ul className="text-xs text-muted-foreground mt-1 space-y-1">
-              <li>• Use full-body photos for best try-on results</li>
+              <li>• Use Portrait photos for best try-on results</li>
               <li>• Good lighting helps AI generate better images</li>
               <li>• Neutral backgrounds work best</li>
               <li>• Maximum 4 photos, 10MB each (JPG/PNG)</li>

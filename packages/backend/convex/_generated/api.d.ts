@@ -50,6 +50,8 @@ import type * as looks_mutations from "../looks/mutations.js";
 import type * as looks_queries from "../looks/queries.js";
 import type * as messages_mutations from "../messages/mutations.js";
 import type * as messages_queries from "../messages/queries.js";
+import type * as moderation_mutations from "../moderation/mutations.js";
+import type * as moderation_queries from "../moderation/queries.js";
 import type * as notifications_actions from "../notifications/actions.js";
 import type * as notifications_mutations from "../notifications/mutations.js";
 import type * as orders_actions from "../orders/actions.js";
@@ -166,6 +168,8 @@ declare const fullApi: ApiFromModules<{
   "looks/queries": typeof looks_queries;
   "messages/mutations": typeof messages_mutations;
   "messages/queries": typeof messages_queries;
+  "moderation/mutations": typeof moderation_mutations;
+  "moderation/queries": typeof moderation_queries;
   "notifications/actions": typeof notifications_actions;
   "notifications/mutations": typeof notifications_mutations;
   "orders/actions": typeof orders_actions;

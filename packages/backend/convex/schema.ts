@@ -672,6 +672,45 @@ export default defineSchema({
     .index('by_addressee_and_status', ['addresseeId', 'status']), // For pending requests
 
   /**
+   * user_blocks - One user blocking another (UGC moderation, App Store 1.2).
+   * A block hides the blocked user from the blocker across DMs, friends, social.
+   */
+  user_blocks: defineTable({
+    blockerId: v.id('users'), // User who initiated the block
+    blockedId: v.id('users'), // User who is blocked
+    createdAt: v.number(),
+  })
+    .index('by_blocker', ['blockerId'])
+    .index('by_blocked', ['blockedId'])
+    .index('by_blocker_and_blocked', ['blockerId', 'blockedId']),
+
+  /**
+   * reports - User reports of objectionable users/content (App Store 1.2).
+   * Reviewed by admins; status drives moderation follow-up.
+   */
+  reports: defineTable({
+    reporterId: v.id('users'),
+    targetUserId: v.id('users'), // User being reported (or owner of reported content)
+    targetType: v.union(
+      v.literal('user'),
+      v.literal('message'),
+      v.literal('look')
+    ),
+    targetId: v.optional(v.string()), // Id of the specific content, if applicable
+    reason: v.string(),
+    status: v.union(
+      v.literal('pending'),
+      v.literal('reviewed'),
+      v.literal('actioned'),
+      v.literal('dismissed')
+    ),
+    createdAt: v.number(),
+  })
+    .index('by_reporter', ['reporterId'])
+    .index('by_target_user', ['targetUserId'])
+    .index('by_status', ['status']),
+
+  /**
    * direct_messages - Private look sharing between users
    * Simple conversation history tracking looks shared between two users
    */
@@ -1301,6 +1340,10 @@ export default defineSchema({
       v.literal('failed')
     ),
     errorMessage: v.optional(v.string()),
+    // Source attribution — where the customer came from when they hit the try-on link
+    referrerUrl: v.optional(v.string()),    // raw document.referrer
+    referrerHost: v.optional(v.string()),   // normalized host, e.g. "instagram.com", "direct"
+    utmSource: v.optional(v.string()),      // ?utm_source= when present
     createdAt: v.number(),
     updatedAt: v.number(),
   })

@@ -1,6 +1,7 @@
 import { query, QueryCtx } from '../_generated/server';
 import { v } from 'convex/values';
 import type { Id, Doc } from '../_generated/dataModel';
+import { getBlockedUserIdSet } from '../moderation/queries';
 
 /**
  * Get all conversations for the current user
@@ -108,9 +109,13 @@ export const getConversations = query({
       }
     }
 
+    // Hide conversations with blocked users (either direction).
+    const blocked = await getBlockedUserIdSet(ctx, user._id);
+
     // Build result with user info and latest message
     const conversations = await Promise.all(
       Array.from(conversationMap.entries()).map(async ([otherUserId, conv]) => {
+        if (blocked.has(otherUserId)) return null;
         // Get other user info
         const otherUser = await ctx.db.get(otherUserId);
         if (!otherUser) {

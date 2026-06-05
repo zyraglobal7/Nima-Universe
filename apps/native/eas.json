@@ -21,7 +21,7 @@
       "distribution": "internal",
       "env": {
         "EXPO_PUBLIC_CONVEX_URL": "https://rare-guineapig-47.convex.cloud",
-        "EXPO_PUBLIC_WORKOS_CLIENT_ID": "client_01KC47243D8SCBY79ZKEPH18EX",
+        "EXPO_PUBLIC_WORKOS_CLIENT_ID": "client_01KC4723R44SCV8DCXT4EVV42Z",
         "EXPO_PUBLIC_WORKOS_REDIRECT_URI": "shopnima://callback"
       }
     },

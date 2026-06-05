@@ -19,6 +19,11 @@ export default function TryOnsAnalyticsPage() {
     endDate: endTimestamp,
   });
 
+  const sellerAnalytics = useQuery(api.admin.analytics.getSellerTryOnAnalytics, {
+    startDate: startTimestamp,
+    endDate: endTimestamp,
+  });
+
   if (!analytics) {
     return (
       <div className="space-y-6">
@@ -104,6 +109,76 @@ export default function TryOnsAnalyticsPage() {
           ]}
         />
       )}
+
+      {/* ---- Seller Try-Ons (customer try-ons via seller share links) ---- */}
+      <div className="pt-4">
+        <h2 className="text-lg font-semibold mb-1">Seller Try-Ons</h2>
+        <p className="text-sm text-muted-foreground mb-4">
+          Try-ons from public seller links (<code>/[store]/try-on/[product]</code>) — by volume,
+          source website, and item.
+        </p>
+
+        {!sellerAnalytics ? (
+          <div className="grid gap-4 md:grid-cols-4">
+            {Array.from({ length: 4 }).map((_, i) => (
+              <Skeleton key={i} className="h-24" />
+            ))}
+          </div>
+        ) : (
+          <div className="space-y-6">
+            <StatsGrid
+              stats={[
+                { label: 'Total Seller Try-Ons', value: sellerAnalytics.total },
+                { label: 'Completed', value: sellerAnalytics.completed, description: 'Successfully generated' },
+                { label: 'Failed', value: sellerAnalytics.failed, description: 'Generation errors' },
+                { label: 'Success Rate', value: `${sellerAnalytics.successRate}%` },
+              ]}
+            />
+
+            <AnalyticsChart
+              type="area"
+              title="Seller Try-Ons Over Time"
+              description="Daily try-ons from seller links"
+              data={sellerAnalytics.trend}
+              dataKey="count"
+              height={300}
+            />
+
+            <div className="grid gap-6 md:grid-cols-2">
+              <AnalyticsChart
+                type="pie"
+                title="Try-Ons by Source"
+                description="Which website / source customers came from"
+                data={sellerAnalytics.bySource}
+                dataKey="count"
+                nameKey="source"
+                height={300}
+              />
+
+              <DataTable
+                title="Top Tried-On Products"
+                description="Most tried-on items via seller links"
+                data={sellerAnalytics.topItems}
+                columns={[
+                  { key: 'name', header: 'Product' },
+                  { key: 'shop', header: 'Store' },
+                  { key: 'count', header: 'Try-Ons', format: (v) => Number(v).toLocaleString() },
+                ]}
+              />
+            </div>
+
+            <DataTable
+              title="Try-Ons by Source Website"
+              description="Referrer host or utm_source per try-on"
+              data={sellerAnalytics.bySource}
+              columns={[
+                { key: 'source', header: 'Source' },
+                { key: 'count', header: 'Try-Ons', format: (v) => Number(v).toLocaleString() },
+              ]}
+            />
+          </div>
+        )}
+      </div>
     </div>
   );
 }

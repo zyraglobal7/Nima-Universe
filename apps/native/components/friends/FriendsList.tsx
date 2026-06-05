@@ -4,16 +4,34 @@ import {
   Text,
   TouchableOpacity,
   ActivityIndicator,
-  Image as RNImage,
 } from "react-native";
 import { Image } from "expo-image";
-import { UserPlus, UserMinus, Check, X } from "lucide-react-native";
+import { UserPlus, UserMinus, Check, X, Users } from "lucide-react-native";
 import { useQuery, useMutation } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import { Id } from "@/convex/_generated/dataModel";
 import Toast from "react-native-toast-message";
+import { useTheme } from "@/lib/contexts/ThemeContext";
+import { ModerationMenu } from "@/components/moderation/ModerationMenu";
+
+interface FriendPerson {
+  _id: Id<"users">;
+  firstName?: string;
+  username?: string;
+  profileImageUrl?: string;
+}
+interface PendingRequest {
+  _id: Id<"friendships">;
+  requester: FriendPerson;
+}
+interface Friendship {
+  _id: Id<"friendships">;
+  friend: FriendPerson;
+  isRequester: boolean;
+}
 
 export function FriendsList() {
+  const { isDark } = useTheme();
   const [removingId, setRemovingId] = useState<Id<"friendships"> | null>(null);
 
   const friends = useQuery(api.friends.queries.getFriends);
@@ -57,58 +75,79 @@ export function FriendsList() {
     }
   };
 
+  const muted = isDark ? "#8C8078" : "#9C948A";
+
   if (friends === undefined || pendingRequests === undefined) {
-    return <ActivityIndicator className="mt-4" />;
+    return (
+      <View className="flex-1 items-center justify-center">
+        <ActivityIndicator color={isDark ? "#C9A07A" : "#5C2A33"} />
+      </View>
+    );
   }
 
   return (
     <View className="flex-1">
       {/* Pending Requests */}
       {(pendingRequests?.length || 0) > 0 && (
-        <View className="mb-6">
-          <Text className="text-lg font-serif font-medium text-foreground mb-3">
-            Pending Requests ({pendingRequests.length})
+        <View className="mb-7">
+          <Text
+            className="text-xs font-semibold uppercase font-sans mb-3 ml-1"
+            style={{ letterSpacing: 0.6, color: muted }}
+          >
+            Requests · {pendingRequests.length}
           </Text>
-          <View className="space-y-3">
-            {pendingRequests.map((request) => (
+          <View style={{ gap: 8 }}>
+            {pendingRequests.map((request: PendingRequest) => (
               <View
                 key={request._id}
-                className="flex-row items-center p-3 bg-surface rounded-xl border border-border"
+                className="flex-row items-center p-3 bg-surface dark:bg-surface-dark rounded-2xl border border-border dark:border-border-dark"
               >
-                <View className="w-10 h-10 rounded-full bg-surface-alt overflow-hidden mr-3">
-                  {request.requester.profileImageUrl ? (
-                    <Image
-                      source={{ uri: request.requester.profileImageUrl }}
-                      className="w-full h-full"
-                    />
-                  ) : (
-                    <View className="w-full h-full items-center justify-center">
-                      <UserPlus size={20} className="text-muted-foreground" />
-                    </View>
-                  )}
-                </View>
-                <View className="flex-1">
-                  <Text className="font-medium text-foreground font-serif">
+                <Avatar
+                  url={request.requester.profileImageUrl}
+                  name={request.requester.firstName || request.requester.username}
+                  isDark={isDark}
+                />
+                <View className="flex-1 ml-3">
+                  <Text className="text-[15px] font-medium text-foreground dark:text-foreground-dark font-sans">
                     {request.requester.firstName ||
                       request.requester.username ||
                       "User"}
                   </Text>
-                  <Text className="text-xs text-muted-foreground font-sans">
+                  <Text
+                    className="text-xs font-sans mt-0.5"
+                    style={{ color: muted }}
+                  >
                     Wants to be friends
                   </Text>
                 </View>
-                <View className="flex-row space-x-2">
+                <View className="flex-row" style={{ gap: 8 }}>
                   <TouchableOpacity
                     onPress={() => handleAccept(request._id)}
-                    className="bg-primary p-2 rounded-full"
+                    activeOpacity={0.8}
+                    style={{
+                      width: 36,
+                      height: 36,
+                      borderRadius: 18,
+                      alignItems: "center",
+                      justifyContent: "center",
+                      backgroundColor: isDark ? "#C9A07A" : "#5C2A33",
+                    }}
                   >
-                    <Check size={16} color="white" />
+                    <Check size={17} color={isDark ? "#1A1614" : "#FAF8F5"} />
                   </TouchableOpacity>
                   <TouchableOpacity
                     onPress={() => handleDecline(request._id)}
-                    className="bg-surface-alt p-2 rounded-full"
+                    activeOpacity={0.8}
+                    style={{
+                      width: 36,
+                      height: 36,
+                      borderRadius: 18,
+                      alignItems: "center",
+                      justifyContent: "center",
+                      backgroundColor: isDark ? "#302B28" : "#EDE6DC",
+                    }}
                   >
-                    <X size={16} className="text-muted-foreground" />
+                    <X size={17} color={muted} />
                   </TouchableOpacity>
                 </View>
               </View>
@@ -118,67 +157,149 @@ export function FriendsList() {
       )}
 
       {/* Friends List */}
-      <View>
-        <Text className="text-lg font-serif font-medium text-foreground mb-3">
-          Friends ({friends?.length || 0})
-        </Text>
-        {(friends?.length || 0) === 0 ? (
-          <View className="items-center py-8">
-            <View className="w-16 h-16 bg-surface-alt rounded-full items-center justify-center mb-3">
-              <UserPlus size={32} className="text-muted-foreground" />
-            </View>
-            <Text className="text-muted-foreground font-sans">
-              No friends yet
-            </Text>
-            <Text className="text-xs text-muted-foreground mt-1 font-sans">
-              Add friends to see shared looks
-            </Text>
+      <Text
+        className="text-xs font-semibold uppercase font-sans mb-3 ml-1"
+        style={{ letterSpacing: 0.6, color: muted }}
+      >
+        Friends · {friends?.length || 0}
+      </Text>
+
+      {(friends?.length || 0) === 0 ? (
+        <View className="items-center py-12">
+          <View
+            style={{
+              width: 64,
+              height: 64,
+              borderRadius: 20,
+              alignItems: "center",
+              justifyContent: "center",
+              backgroundColor: isDark ? "#302B28" : "#EDE6DC",
+              marginBottom: 14,
+            }}
+          >
+            <Users size={28} color={muted} />
           </View>
-        ) : (
-          <View className="space-y-3">
-            {friends.map((friendship) => (
-              <View
-                key={friendship._id}
-                className="flex-row items-center p-3 bg-surface rounded-xl border border-border"
-              >
-                <View className="w-10 h-10 rounded-full bg-surface-alt overflow-hidden mr-3">
-                  {friendship.friend.profileImageUrl ? (
-                    <Image
-                      source={{ uri: friendship.friend.profileImageUrl }}
-                      className="w-full h-full"
-                    />
-                  ) : (
-                    <View className="w-full h-full items-center justify-center">
-                      <UserPlus size={20} className="text-muted-foreground" />
-                    </View>
+          <Text className="text-[15px] font-medium text-foreground dark:text-foreground-dark font-sans">
+            No friends yet
+          </Text>
+          <Text
+            className="text-[13px] mt-1 font-sans text-center"
+            style={{ color: muted, maxWidth: 240, lineHeight: 19 }}
+          >
+            Add friends to share looks and see what they're trying on.
+          </Text>
+        </View>
+      ) : (
+        <View style={{ gap: 8 }}>
+          {friends.map((friendship: Friendship) => (
+            <View
+              key={friendship._id}
+              className="flex-row items-center p-3 bg-surface dark:bg-surface-dark rounded-2xl border border-border dark:border-border-dark"
+            >
+              <Avatar
+                url={friendship.friend.profileImageUrl}
+                name={friendship.friend.firstName || friendship.friend.username}
+                isDark={isDark}
+              />
+              <View className="flex-1 ml-3">
+                <Text className="text-[15px] font-medium text-foreground dark:text-foreground-dark font-sans">
+                  {friendship.friend.firstName ||
+                    friendship.friend.username ||
+                    "User"}
+                </Text>
+                {friendship.friend.username &&
+                  friendship.friend.firstName && (
+                    <Text
+                      className="text-xs font-sans mt-0.5"
+                      style={{ color: muted }}
+                    >
+                      @{friendship.friend.username}
+                    </Text>
                   )}
-                </View>
-                <View className="flex-1">
-                  <Text className="font-medium text-foreground font-serif">
-                    {friendship.friend.firstName ||
-                      friendship.friend.username ||
-                      "User"}
-                  </Text>
-                  <Text className="text-xs text-muted-foreground font-sans">
-                    Friend
-                  </Text>
-                </View>
+              </View>
+              <View className="flex-row items-center" style={{ gap: 4 }}>
                 <TouchableOpacity
                   onPress={() => handleRemove(friendship._id)}
                   disabled={removingId === friendship._id}
-                  className="p-2"
+                  activeOpacity={0.7}
+                  hitSlop={8}
+                  style={{
+                    width: 36,
+                    height: 36,
+                    borderRadius: 18,
+                    alignItems: "center",
+                    justifyContent: "center",
+                  }}
                 >
                   {removingId === friendship._id ? (
-                    <ActivityIndicator size="small" />
+                    <ActivityIndicator size="small" color={muted} />
                   ) : (
-                    <UserMinus size={20} className="text-muted-foreground" />
+                    <UserMinus size={18} color={muted} />
                   )}
                 </TouchableOpacity>
+                <ModerationMenu
+                  targetUserId={friendship.friend._id}
+                  targetName={friendship.friend.firstName || friendship.friend.username}
+                  color={muted}
+                  size={20}
+                />
               </View>
-            ))}
-          </View>
-        )}
-      </View>
+            </View>
+          ))}
+        </View>
+      )}
+    </View>
+  );
+}
+
+/* ─── Avatar with initials fallback ───────────────────────────────────────── */
+
+function Avatar({
+  url,
+  name,
+  isDark,
+}: {
+  url?: string;
+  name?: string;
+  isDark: boolean;
+}) {
+  const size = 44;
+  const initial = (name || "U").trim().charAt(0).toUpperCase();
+
+  return (
+    <View
+      style={{
+        width: size,
+        height: size,
+        borderRadius: size / 2,
+        overflow: "hidden",
+        alignItems: "center",
+        justifyContent: "center",
+        backgroundColor: isDark
+          ? "rgba(201,160,122,0.16)"
+          : "rgba(92,42,51,0.08)",
+      }}
+    >
+      {url ? (
+        <Image
+          source={{ uri: url }}
+          style={{ width: size, height: size }}
+          contentFit="cover"
+          cachePolicy="memory-disk"
+          transition={150}
+        />
+      ) : (
+        <Text
+          className="font-serif"
+          style={{
+            fontSize: 18,
+            fontWeight: "600",
+            color: isDark ? "#C9A07A" : "#5C2A33",
+          }}
+        >
+          {initial}
+        </Text>
+      )}
     </View>
   );
 }

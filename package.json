@@ -1,6 +1,7 @@
 {
   "name": "nima-universe",
   "private": true,
+  "main": "expo-router/entry",
   "workspaces": [
     "apps/web",
     "apps/native",

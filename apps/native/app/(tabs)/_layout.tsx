@@ -1,6 +1,6 @@
-import { Tabs, Redirect, router } from "expo-router";
+import { Tabs, usePathname } from "expo-router";
 import { View, ActivityIndicator, StyleSheet, Pressable, Text } from "react-native";
-import { useRef, useState, useContext } from "react";
+import { useRef, useState } from "react";
 import { Sparkles, BookOpen, User, Camera, Home } from "lucide-react-native";
 import { useTheme } from "@/lib/contexts/ThemeContext";
 import { useConvexAuth } from "convex/react";
@@ -8,7 +8,6 @@ import { RouteErrorBoundary } from "@/components/ErrorBoundary";
 import { QuickTryOnModal } from "@/components/quick-try-on/QuickTryOnModal";
 import { FloatingAskNimaButton } from "@/components/engine/FloatingAskNimaButton";
 import { AskNimaSheet, type AskNimaSheetRef } from "@/components/ask/AskNimaSheet";
-import { NavigationContext } from "@react-navigation/core";
 
 // Re-export as Expo Router's route-level ErrorBoundary for tab screens
 export { RouteErrorBoundary as ErrorBoundary };
@@ -16,29 +15,17 @@ export { RouteErrorBoundary as ErrorBoundary };
 export default function TabLayout() {
   const { isDark } = useTheme();
   const { isLoading, isAuthenticated } = useConvexAuth();
-  // Guard against the transient "Couldn't find a navigation context" error
-  // that can fire during initial mount or Fast Refresh before Expo Router
-  // has wired up the NavigationContainer. Must be called with all other hooks
-  // (no conditional hook calls), then we return null if context isn't ready.
-  const navContext = useContext(NavigationContext);
   const askSheetRef = useRef<AskNimaSheetRef>(null);
   const [isQuickTryOnOpen, setIsQuickTryOnOpen] = useState(false);
-  const [activeTab, setActiveTab] = useState<string>("discover");
   const [isAskSheetOpen, setIsAskSheetOpen] = useState(false);
 
-  const navState = navContext?.getState?.();
+  // Derive active tab from pathname so tab switches don't re-render TabLayout.
+  const pathname = usePathname();
+  const activeTab = pathname.replace(/^\//, "") || "discover";
 
-  if (!navContext || !navState) {
-    return (
-      <View style={StyleSheet.absoluteFill} />
-    );
-  }
-
-  // Redirect only after loading is complete and user is not authenticated
-  if (!isLoading && !isAuthenticated) {
-    return <Redirect href="/" />;
-  }
-
+  // Auth redirect handled by LayoutContent. Show blocking overlay over the
+  // mounted <Tabs> so NavigationStateContext is never destroyed mid-render.
+  const showBlockingOverlay = isLoading || !isAuthenticated;
   const showFloatingBtn = activeTab === "engine" && !isAskSheetOpen;
 
   return (
@@ -59,15 +46,6 @@ export default function TabLayout() {
           tabBarLabelStyle: {
             fontSize: 11,
             fontWeight: "500",
-          },
-        }}
-        screenListeners={{
-          state: (e) => {
-            const state = e.data?.state;
-            if (state) {
-              const route = state.routes[state.index];
-              if (route) setActiveTab(route.name);
-            }
           },
         }}
       >
@@ -100,7 +78,6 @@ export default function TabLayout() {
           options={{
             title: "Try-On",
             tabBarButton: () => {
-              // Use brand palette: burgundy in light, rose gold in dark
               const btnBg = isDark ? "#C9A07A" : "#5C2A33";
               const iconColor = "#FAF8F5";
               const labelColor = isDark ? "#8C8078" : "#6B635B";
@@ -167,8 +144,9 @@ export default function TabLayout() {
         />
       </Tabs>
 
-      {/* Loading overlay — <Tabs> stays mounted so navigation context is always available */}
-      {isLoading && (
+      {/* Opaque overlay while auth loads or LayoutContent's redirect fires.
+          <Tabs> stays mounted so NavigationStateContext is preserved. */}
+      {showBlockingOverlay && (
         <View
           style={[
             StyleSheet.absoluteFill,

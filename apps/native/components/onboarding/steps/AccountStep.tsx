@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
-import { View, Text, Pressable, ActivityIndicator, Linking } from "react-native";
+import { View, Text, Pressable, ActivityIndicator } from "react-native";
+import * as WebBrowser from "expo-web-browser";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useQuery } from "convex/react";
 import { api } from "@/convex/_generated/api";
@@ -206,7 +207,7 @@ export function AccountStep({ formData, onNext, onBack }: StepProps) {
                   </View>
                 ) : (
                   <Text className="text-primary-foreground text-base font-semibold tracking-wide">
-                    Continue to Sign In
+                    Create Account
                   </Text>
                 )}
               </Pressable>
@@ -216,14 +217,14 @@ export function AccountStep({ formData, onNext, onBack }: StepProps) {
                 By continuing, you agree to our{" "}
                 <Text
                   className="text-secondary underline"
-                  onPress={() => Linking.openURL("https://www.shopnima.ai/termsAndConditions")}
+                  onPress={() => WebBrowser.openBrowserAsync("https://www.shopnima.ai/termsAndConditions")}
                 >
                   Terms of Service
                 </Text>{" "}
                 and{" "}
                 <Text
                   className="text-secondary underline"
-                  onPress={() => Linking.openURL("https://www.shopnima.ai/privacyPolicy")}
+                  onPress={() => WebBrowser.openBrowserAsync("https://www.shopnima.ai/privacyPolicy")}
                 >
                   Privacy Policy
                 </Text>

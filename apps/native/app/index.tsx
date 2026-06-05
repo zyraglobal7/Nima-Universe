@@ -1,7 +1,11 @@
 import React, { useEffect } from "react";
 import { View } from "react-native";
 import { useRouter } from "expo-router";
-import { Authenticated, Unauthenticated, AuthLoading } from "convex/react";
+import {
+  Authenticated,
+  Unauthenticated,
+  AuthLoading,
+} from "convex/react";
 import { GateSplash } from "@/components/landing/GateSplash";
 import { useOnboardingCompletion } from "@/lib/hooks/useOnboardingCompletion";
 import { Loader } from "@/components/ui/Loader";
@@ -51,7 +55,7 @@ export default function Index() {
   };
 
   return (
-    <View className="flex-1 bg-background">
+    <View className="flex-1 bg-background dark:bg-background-dark">
       {/* Loading State */}
       <AuthLoading>
         <Loader />

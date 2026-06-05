@@ -17,6 +17,39 @@ interface PageProps {
 
 type PageState = 'landing' | 'camera' | 'upload' | 'preview' | 'processing' | 'result' | 'error' | 'no_credits';
 
+interface TrafficSource {
+  referrerUrl?: string;
+  referrerHost?: string;
+  utmSource?: string;
+}
+
+/**
+ * Read where the visitor came from. Captured once on the client so we can
+ * attribute each seller try-on to the website/source that sent them here.
+ */
+function readTrafficSource(): TrafficSource {
+  if (typeof window === 'undefined') return {};
+
+  const referrerUrl = document.referrer || undefined;
+  let referrerHost: string | undefined;
+  if (referrerUrl) {
+    try {
+      referrerHost = new URL(referrerUrl).hostname.replace(/^www\./, '');
+    } catch {
+      referrerHost = undefined;
+    }
+  }
+  // Same-origin referrers (in-app navigation) aren't a meaningful external source
+  if (referrerHost && referrerHost === window.location.hostname.replace(/^www\./, '')) {
+    referrerHost = undefined;
+  }
+  if (!referrerHost) referrerHost = 'direct';
+
+  const utmSource = new URLSearchParams(window.location.search).get('utm_source') || undefined;
+
+  return { referrerUrl, referrerHost, utmSource };
+}
+
 export default function SellerTryOnPage({ params }: PageProps) {
   const [resolvedParams, setResolvedParams] = useState<{ storeName: string; productId: string } | null>(null);
 
@@ -39,6 +72,12 @@ export default function SellerTryOnPage({ params }: PageProps) {
 
   const [imageOpen, setImageOpen] = useState(false);
   const [isAddingToCart, setIsAddingToCart] = useState(false);
+  const trafficSourceRef = useRef<TrafficSource>({});
+
+  // Capture the traffic source once on mount (before any in-app navigation changes it)
+  useEffect(() => {
+    trafficSourceRef.current = readTrafficSource();
+  }, []);
 
   const generateUploadUrl = useMutation(api.sellerTryOns.mutations.generateCustomerUploadUrl);
   const createSellerTryOn = useMutation(api.sellerTryOns.mutations.createSellerTryOn);
@@ -185,6 +224,7 @@ export default function SellerTryOnPage({ params }: PageProps) {
         sellerId: sellerAndItem.seller._id,
         itemId: sellerAndItem.item._id,
         customerImageStorageId: storageId,
+        ...trafficSourceRef.current,
       });
 
       if (!result.success) {
