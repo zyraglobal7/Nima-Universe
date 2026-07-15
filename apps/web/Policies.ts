@@ -297,3 +297,51 @@ export const PERMISSIONS_JUSTIFICATION = {
     },
   ],
 } as const;
+
+export const SUPPORT_INFO = {
+  title: "Support",
+  company: "Nima AI Inc",
+  website: "https://www.shopnima.ai",
+  contactEmail: "support@shopnima.ai",
+  responseTime:
+    "We aim to respond to all support requests within 1–2 business days.",
+  intro:
+    "Need help with Nima? We're here for you. Reach out any time and our team will get back to you as soon as possible.",
+  sections: [
+    {
+      heading: "Contact Us",
+      paragraphs: [
+        "The fastest way to get help is by email. Send us a message and include your account email, the device you're using, and a description of the issue (screenshots help).",
+      ],
+      list: [
+        "Email: support@shopnima.ai",
+        "Response time: within 1–2 business days",
+      ],
+    },
+    {
+      heading: "Account & Sign In",
+      content:
+        "You can sign in with Apple, Google, or your email address. If you can't access your account, email us from the address you signed up with and we'll help you recover it.",
+    },
+    {
+      heading: "Virtual Try-On & Credits",
+      content:
+        "Every account receives free credits each week to try on items and generate looks. If a try-on fails or a credit wasn't applied correctly, contact us with the date and time and we'll make it right.",
+    },
+    {
+      heading: "Orders & Delivery",
+      content:
+        "For questions about a clothing order, payment, delivery, returns, or refunds, email us with your order number and we'll follow up with your order's status.",
+    },
+    {
+      heading: "Privacy & Your Data",
+      content:
+        "To access, correct, export, or delete your personal data, email support@shopnima.ai. See our Privacy Policy for full details on how we handle your information.",
+    },
+    {
+      heading: "Report a Problem",
+      content:
+        "To report a bug, inappropriate content, or a safety concern, email us with as much detail as possible so we can investigate quickly.",
+    },
+  ],
+} as const;

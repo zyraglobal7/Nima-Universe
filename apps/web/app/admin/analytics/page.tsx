@@ -13,6 +13,7 @@ import {
   Link2,
   Coins,
   Share2,
+  Store,
 } from 'lucide-react';
 
 import { api } from '@/convex/_generated/api';
@@ -28,6 +29,11 @@ export default function AnalyticsDashboard() {
   const { startTimestamp, endTimestamp } = useAnalyticsDate();
 
   const summary = useQuery(api.admin.analytics.getAnalyticsSummary, {
+    startDate: startTimestamp,
+    endDate: endTimestamp,
+  });
+
+  const itemSources = useQuery(api.admin.analytics.getItemSourceAnalytics, {
     startDate: startTimestamp,
     endDate: endTimestamp,
   });
@@ -180,6 +186,22 @@ export default function AnalyticsDashboard() {
         href="/admin/analytics/referrals"
         trend={summary.referrals.trend}
         trendDirection={summary.referrals.total > 0 ? 'up' : 'neutral'}
+      />
+
+      <MetricCard
+        title="Item Sources"
+        value={itemSources ? itemSources.withSource : '—'}
+        subtitle={
+          itemSources
+            ? `${itemSources.coverageRate}% of catalog · ${itemSources.bySource.length} stores`
+            : 'Sourced from stores & links'
+        }
+        icon={Store}
+        href="/admin/analytics/items"
+        trend={itemSources?.trend}
+        trendDirection={
+          itemSources && itemSources.newWithSourceInPeriod > 0 ? 'up' : 'neutral'
+        }
       />
     </div>
   );
