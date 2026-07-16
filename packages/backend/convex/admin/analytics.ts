@@ -1,4 +1,5 @@
 import { query, QueryCtx } from '../_generated/server';
+import { getUserFromIdentity } from '../lib/auth';
 import { v } from 'convex/values';
 import type { Id, Doc } from '../_generated/dataModel';
 
@@ -638,6 +639,141 @@ export const getSellerTryOnAnalytics = query({
         periodTryOns.length > 0 ? Math.round((completed / periodTryOns.length) * 100) : 0,
       bySource,
       topItems,
+      trend,
+    };
+  },
+});
+
+// =============================================================================
+// ITEM SOURCE ANALYTICS (where catalog items come from — e.g. Instagram stores)
+// =============================================================================
+
+/**
+ * Analytics for the `source` of catalog items.
+ *
+ * Items carry a `sourceStore` (human-readable store/brand name) and a
+ * `sourceUrl` (usually an Instagram store link, sometimes a website). This
+ * query reports catalog composition by source so admins can see which stores /
+ * domains the inventory is coming from, plus how many new sourced items were
+ * added in the selected period.
+ */
+export const getItemSourceAnalytics = query({
+  args: {
+    startDate: v.number(),
+    endDate: v.number(),
+  },
+  returns: v.object({
+    totalItems: v.number(),
+    withSource: v.number(),
+    withoutSource: v.number(),
+    coverageRate: v.number(),
+    newInPeriod: v.number(),
+    newWithSourceInPeriod: v.number(),
+    bySource: v.array(v.object({ source: v.string(), count: v.number() })),
+    byDomain: v.array(v.object({ domain: v.string(), count: v.number() })),
+    topSources: v.array(v.object({ source: v.string(), count: v.number() })),
+    trend: v.array(v.object({ date: v.string(), count: v.number() })),
+  }),
+  handler: async (
+    ctx: QueryCtx,
+    args: { startDate: number; endDate: number }
+  ): Promise<{
+    totalItems: number;
+    withSource: number;
+    withoutSource: number;
+    coverageRate: number;
+    newInPeriod: number;
+    newWithSourceInPeriod: number;
+    bySource: Array<{ source: string; count: number }>;
+    byDomain: Array<{ domain: string; count: number }>;
+    topSources: Array<{ source: string; count: number }>;
+    trend: Array<{ date: string; count: number }>;
+  }> => {
+    const { startDate, endDate } = args;
+
+    const allItems = await ctx.db.query('items').collect();
+
+    // Derive a hostname from a URL (e.g. instagram.com). Falls back gracefully
+    // for stored values that aren't full URLs.
+    const getDomain = (url: string): string => {
+      try {
+        const host = new URL(url).hostname.toLowerCase();
+        return host.replace(/^www\./, '');
+      } catch {
+        // Not a parseable URL — strip any protocol/path and take the first token
+        return url
+          .replace(/^https?:\/\//, '')
+          .replace(/^www\./, '')
+          .split(/[/?#]/)[0]
+          .toLowerCase() || 'unknown';
+      }
+    };
+
+    // An item counts as "sourced" if it has either a store name or a source URL.
+    const hasSource = (item: Doc<'items'>): boolean =>
+      Boolean((item.sourceStore && item.sourceStore.trim()) || item.sourceUrl);
+
+    const sourcedItems = allItems.filter(hasSource);
+
+    // Breakdown by store name (prefer sourceStore, fall back to the URL domain)
+    const sourceCount: Record<string, number> = {};
+    const domainCount: Record<string, number> = {};
+    for (const item of sourcedItems) {
+      const label =
+        (item.sourceStore && item.sourceStore.trim()) ||
+        (item.sourceUrl ? getDomain(item.sourceUrl) : 'Unknown');
+      sourceCount[label] = (sourceCount[label] || 0) + 1;
+
+      if (item.sourceUrl) {
+        const domain = getDomain(item.sourceUrl);
+        domainCount[domain] = (domainCount[domain] || 0) + 1;
+      }
+    }
+
+    const bySource = Object.entries(sourceCount)
+      .map(([source, count]) => ({ source, count }))
+      .sort((a, b) => b.count - a.count);
+
+    const byDomain = Object.entries(domainCount)
+      .map(([domain, count]) => ({ domain, count }))
+      .sort((a, b) => b.count - a.count);
+
+    // Items created in the selected period
+    const periodItems = allItems.filter(
+      (i) => i.createdAt >= startDate && i.createdAt <= endDate
+    );
+    const newWithSourceInPeriod = periodItems.filter(hasSource).length;
+
+    // Trend: sourced items added per day in the period
+    const dayMs = 24 * 60 * 60 * 1000;
+    const days = Math.ceil((endDate - startDate) / dayMs);
+    const trendMap: Record<string, number> = {};
+    for (let i = 0; i <= days; i++) {
+      const date = new Date(startDate + i * dayMs);
+      trendMap[date.toISOString().split('T')[0]] = 0;
+    }
+    for (const item of periodItems) {
+      if (!hasSource(item)) continue;
+      const dateStr = new Date(item.createdAt).toISOString().split('T')[0];
+      if (trendMap[dateStr] !== undefined) trendMap[dateStr]++;
+    }
+    const trend = Object.entries(trendMap)
+      .map(([date, count]) => ({ date, count }))
+      .sort((a, b) => a.date.localeCompare(b.date));
+
+    return {
+      totalItems: allItems.length,
+      withSource: sourcedItems.length,
+      withoutSource: allItems.length - sourcedItems.length,
+      coverageRate:
+        allItems.length > 0
+          ? Math.round((sourcedItems.length / allItems.length) * 100)
+          : 0,
+      newInPeriod: periodItems.length,
+      newWithSourceInPeriod,
+      bySource,
+      byDomain,
+      topSources: bySource.slice(0, 10),
       trend,
     };
   },
@@ -2194,10 +2330,7 @@ export const getReferralAnalytics = query({
   }> => {
     const identity = await ctx.auth.getUserIdentity();
     if (!identity) throw new Error('Not authenticated');
-    const adminUser = await ctx.db
-      .query('users')
-      .withIndex('by_workos_user_id', (q) => q.eq('workosUserId', identity.subject))
-      .unique();
+    const adminUser = await getUserFromIdentity(ctx);
     if (!adminUser || adminUser.role !== 'admin') throw new Error('Not authorized');
 
     const now = Date.now();
