@@ -1,4 +1,5 @@
 import { mutation, MutationCtx } from '../../_generated/server';
+import { getUserFromIdentity } from '../../lib/auth';
 import { v } from 'convex/values';
 import { internal } from '../../_generated/api';
 import type { Id } from '../../_generated/dataModel';
@@ -7,10 +8,7 @@ import type { Id } from '../../_generated/dataModel';
 async function requireAdmin(ctx: MutationCtx): Promise<void> {
   const identity = await ctx.auth.getUserIdentity();
   if (!identity) throw new Error('Not authenticated');
-  const user = await ctx.db
-    .query('users')
-    .withIndex('by_workos_user_id', (q) => q.eq('workosUserId', identity.subject))
-    .unique();
+  const user = await getUserFromIdentity(ctx);
   if (!user || user.role !== 'admin') throw new Error('Admin access required');
 }
 

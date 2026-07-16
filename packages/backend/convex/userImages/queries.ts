@@ -1,4 +1,5 @@
 import { query, QueryCtx } from '../_generated/server';
+import { getUserFromIdentity } from '../lib/auth';
 import { v } from 'convex/values';
 import type { Doc, Id } from '../_generated/dataModel';
 
@@ -50,10 +51,7 @@ export const getUserImages = query({
     }
 
     // Get user
-    const user = await ctx.db
-      .query('users')
-      .withIndex('by_workos_user_id', (q) => q.eq('workosUserId', identity.subject))
-      .unique();
+    const user = await getUserFromIdentity(ctx);
 
     if (!user) {
       return [];
@@ -96,10 +94,7 @@ export const getPrimaryImage = query({
     }
 
     // Get user
-    const user = await ctx.db
-      .query('users')
-      .withIndex('by_workos_user_id', (q) => q.eq('workosUserId', identity.subject))
-      .unique();
+    const user = await getUserFromIdentity(ctx);
 
     if (!user) {
       return null;
@@ -135,10 +130,7 @@ export const getUserImageCount = query({
       return 0;
     }
 
-    const user = await ctx.db
-      .query('users')
-      .withIndex('by_workos_user_id', (q) => q.eq('workosUserId', identity.subject))
-      .unique();
+    const user = await getUserFromIdentity(ctx);
 
     if (!user) {
       return 0;
@@ -210,10 +202,7 @@ export const getExistingUserImages = query({
     }
 
     // Get user
-    const user = await ctx.db
-      .query('users')
-      .withIndex('by_workos_user_id', (q) => q.eq('workosUserId', identity.subject))
-      .unique();
+    const user = await getUserFromIdentity(ctx);
 
     if (!user) {
       return [];

@@ -1,4 +1,5 @@
 import { query, internalQuery, QueryCtx } from '../_generated/server';
+import { getUserFromIdentity } from '../lib/auth';
 import { v } from 'convex/values';
 import type { Doc, Id } from '../_generated/dataModel';
 import { type SellerTier } from '../types';
@@ -10,10 +11,7 @@ import { getTierConfig } from './tierConfig';
 async function getSellerWithTier(ctx: QueryCtx): Promise<(Doc<'sellers'> & { effectiveTier: SellerTier }) | null> {
   const identity = await ctx.auth.getUserIdentity();
   if (!identity) return null;
-  const user = await ctx.db
-    .query('users')
-    .withIndex('by_workos_user_id', (q) => q.eq('workosUserId', identity.subject))
-    .unique();
+  const user = await getUserFromIdentity(ctx);
   if (!user) return null;
   const seller = await ctx.db
     .query('sellers')
@@ -79,10 +77,7 @@ export const isCurrentUserSeller = query({
       return false;
     }
 
-    const user = await ctx.db
-      .query('users')
-      .withIndex('by_workos_user_id', (q) => q.eq('workosUserId', identity.subject))
-      .unique();
+    const user = await getUserFromIdentity(ctx);
 
     if (!user) {
       return false;
@@ -157,10 +152,7 @@ export const getCurrentSeller = query({
       return null;
     }
 
-    const user = await ctx.db
-      .query('users')
-      .withIndex('by_workos_user_id', (q) => q.eq('workosUserId', identity.subject))
-      .unique();
+    const user = await getUserFromIdentity(ctx);
 
     if (!user) {
       return null;
@@ -825,10 +817,7 @@ export const getSellerProduct = query({
       return null;
     }
 
-    const user = await ctx.db
-      .query('users')
-      .withIndex('by_workos_user_id', (q) => q.eq('workosUserId', identity.subject))
-      .unique();
+    const user = await getUserFromIdentity(ctx);
 
     if (!user) {
       return null;
@@ -976,10 +965,7 @@ export const getSellerOrder = query({
       return null;
     }
 
-    const user = await ctx.db
-      .query('users')
-      .withIndex('by_workos_user_id', (q) => q.eq('workosUserId', identity.subject))
-      .unique();
+    const user = await getUserFromIdentity(ctx);
 
     if (!user) {
       return null;

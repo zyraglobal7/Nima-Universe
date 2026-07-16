@@ -1,4 +1,5 @@
 import { mutation, MutationCtx } from '../_generated/server';
+import { getUserFromIdentity } from '../lib/auth';
 import { v } from 'convex/values';
 import type { Id } from '../_generated/dataModel';
 
@@ -36,10 +37,7 @@ export const addToCart = mutation({
       return { success: false, message: 'You must be logged in to add items to cart' };
     }
 
-    const user = await ctx.db
-      .query('users')
-      .withIndex('by_workos_user_id', (q) => q.eq('workosUserId', identity.subject))
-      .unique();
+    const user = await getUserFromIdentity(ctx);
 
     if (!user) {
       return { success: false, message: 'User not found' };
@@ -127,10 +125,7 @@ export const removeFromCart = mutation({
       return { success: false, message: 'You must be logged in' };
     }
 
-    const user = await ctx.db
-      .query('users')
-      .withIndex('by_workos_user_id', (q) => q.eq('workosUserId', identity.subject))
-      .unique();
+    const user = await getUserFromIdentity(ctx);
 
     if (!user) {
       return { success: false, message: 'User not found' };
@@ -176,10 +171,7 @@ export const updateQuantity = mutation({
       return { success: false, message: 'You must be logged in' };
     }
 
-    const user = await ctx.db
-      .query('users')
-      .withIndex('by_workos_user_id', (q) => q.eq('workosUserId', identity.subject))
-      .unique();
+    const user = await getUserFromIdentity(ctx);
 
     if (!user) {
       return { success: false, message: 'User not found' };
@@ -230,10 +222,7 @@ export const clearCart = mutation({
       return { success: false, message: 'You must be logged in', itemsRemoved: 0 };
     }
 
-    const user = await ctx.db
-      .query('users')
-      .withIndex('by_workos_user_id', (q) => q.eq('workosUserId', identity.subject))
-      .unique();
+    const user = await getUserFromIdentity(ctx);
 
     if (!user) {
       return { success: false, message: 'User not found', itemsRemoved: 0 };

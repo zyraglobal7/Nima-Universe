@@ -1,4 +1,5 @@
 import { query, internalQuery, QueryCtx } from '../_generated/server';
+import { getUserFromIdentity } from '../lib/auth';
 import { v } from 'convex/values';
 import type { Id, Doc } from '../_generated/dataModel';
 import { isValidUsername } from '../types';
@@ -44,10 +45,7 @@ export const getOnboardingState = query({
       };
     }
 
-    const user = await ctx.db
-      .query('users')
-      .withIndex('by_workos_user_id', (q) => q.eq('workosUserId', identity.subject))
-      .unique();
+    const user = await getUserFromIdentity(ctx);
 
     if (!user) {
       return {
@@ -109,7 +107,7 @@ export const getCurrentUser = query({
     v.object({
       _id: v.id('users'),
       _creationTime: v.number(),
-      workosUserId: v.string(),
+      workosUserId: v.optional(v.string()),
       email: v.string(),
       emailVerified: v.boolean(),
       username: v.optional(v.string()),
@@ -207,7 +205,7 @@ export const getUser = query({
     v.object({
       _id: v.id('users'),
       _creationTime: v.number(),
-      workosUserId: v.string(),
+      workosUserId: v.optional(v.string()),
       email: v.string(),
       emailVerified: v.boolean(),
       username: v.optional(v.string()),
@@ -297,7 +295,7 @@ export const getUserByWorkosId = query({
     v.object({
       _id: v.id('users'),
       _creationTime: v.number(),
-      workosUserId: v.string(),
+      workosUserId: v.optional(v.string()),
       email: v.string(),
       emailVerified: v.boolean(),
       username: v.optional(v.string()),
@@ -465,10 +463,7 @@ export const getCurrentUserProfileImage = query({
       return null;
     }
 
-    const user = await ctx.db
-      .query('users')
-      .withIndex('by_workos_user_id', (q) => q.eq('workosUserId', identity.subject))
-      .unique();
+    const user = await getUserFromIdentity(ctx);
 
     if (!user) {
       return null;

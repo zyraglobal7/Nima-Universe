@@ -1,4 +1,5 @@
 import { query, QueryCtx } from '../_generated/server';
+import { getUserFromIdentity } from '../lib/auth';
 import { v } from 'convex/values';
 import type { Id } from '../_generated/dataModel';
 
@@ -8,10 +9,7 @@ import type { Id } from '../_generated/dataModel';
 async function getCurrentUserId(ctx: QueryCtx): Promise<Id<'users'> | null> {
   const identity = await ctx.auth.getUserIdentity();
   if (!identity) return null;
-  const user = await ctx.db
-    .query('users')
-    .withIndex('by_workos_user_id', (q) => q.eq('workosUserId', identity.subject))
-    .unique();
+  const user = await getUserFromIdentity(ctx);
   return user?._id ?? null;
 }
 

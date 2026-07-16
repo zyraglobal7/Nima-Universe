@@ -1,4 +1,5 @@
 import { query, internalQuery, QueryCtx } from '../../_generated/server';
+import { getUserFromIdentity } from '../../lib/auth';
 import { v } from 'convex/values';
 import type { Doc, Id } from '../../_generated/dataModel';
 
@@ -49,10 +50,7 @@ export const getMyOrders = query({
     const identity = await ctx.auth.getUserIdentity();
     if (!identity) return [];
 
-    const user = await ctx.db
-      .query('users')
-      .withIndex('by_workos_user_id', (q) => q.eq('workosUserId', identity.subject))
-      .unique();
+    const user = await getUserFromIdentity(ctx);
     if (!user) return [];
 
     return ctx.db
@@ -73,10 +71,7 @@ export const getByOrderNumber = query({
     const identity = await ctx.auth.getUserIdentity();
     if (!identity) return null;
 
-    const user = await ctx.db
-      .query('users')
-      .withIndex('by_workos_user_id', (q) => q.eq('workosUserId', identity.subject))
-      .unique();
+    const user = await getUserFromIdentity(ctx);
     if (!user) return null;
 
     const order = await ctx.db
@@ -109,10 +104,7 @@ export const getTailorOrders = query({
     const identity = await ctx.auth.getUserIdentity();
     if (!identity) return [];
 
-    const user = await ctx.db
-      .query('users')
-      .withIndex('by_workos_user_id', (q) => q.eq('workosUserId', identity.subject))
-      .unique();
+    const user = await getUserFromIdentity(ctx);
     if (!user) return [];
 
     const seller = await ctx.db
@@ -144,10 +136,7 @@ export const getById = query({
     const identity = await ctx.auth.getUserIdentity();
     if (!identity) return null;
 
-    const user = await ctx.db
-      .query('users')
-      .withIndex('by_workos_user_id', (q) => q.eq('workosUserId', identity.subject))
-      .unique();
+    const user = await getUserFromIdentity(ctx);
     if (!user) return null;
 
     const order = await ctx.db.get(args.tailoredOrderId);

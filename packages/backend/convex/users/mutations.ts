@@ -3,6 +3,7 @@ import { v } from 'convex/values';
 import type { Id, Doc } from '../_generated/dataModel';
 import { isValidUsername, getStartOfDayUTC } from '../types';
 import { sanitizeName, sanitizeUsername, sanitizePhone, sanitizeText, sanitizeTags } from '../lib/sanitize';
+import { providerFromIssuer, linkIdentity, getUserFromIdentity } from '../lib/auth';
 
 /**
  * Create a new user from WorkOS webhook
@@ -186,10 +187,7 @@ export const updateProfile = mutation({
       throw new Error('Not authenticated');
     }
 
-    const user = await ctx.db
-      .query('users')
-      .withIndex('by_workos_user_id', (q) => q.eq('workosUserId', identity.subject))
-      .unique();
+    const user = await getUserFromIdentity(ctx);
 
     if (!user) {
       throw new Error('User not found');
@@ -277,10 +275,7 @@ export const completeOnboarding = mutation({
       throw new Error('Not authenticated');
     }
 
-    const user = await ctx.db
-      .query('users')
-      .withIndex('by_workos_user_id', (q) => q.eq('workosUserId', identity.subject))
-      .unique();
+    const user = await getUserFromIdentity(ctx);
 
     if (!user) {
       throw new Error('User not found');
@@ -337,10 +332,7 @@ export const completeOnboardingV2 = mutation({
       throw new Error('Not authenticated');
     }
 
-    const user = await ctx.db
-      .query('users')
-      .withIndex('by_workos_user_id', (q) => q.eq('workosUserId', identity.subject))
-      .unique();
+    const user = await getUserFromIdentity(ctx);
 
     if (!user) {
       throw new Error('User not found');
@@ -384,10 +376,7 @@ export const markOnboardingComplete = mutation({
       return { success: false, reason: 'Not authenticated' };
     }
 
-    const user = await ctx.db
-      .query('users')
-      .withIndex('by_workos_user_id', (q) => q.eq('workosUserId', identity.subject))
-      .unique();
+    const user = await getUserFromIdentity(ctx);
 
     if (!user) {
       return { success: false, reason: 'User not found' };
@@ -444,10 +433,7 @@ export const updateStylePreferences = mutation({
       throw new Error('Not authenticated');
     }
 
-    const user = await ctx.db
-      .query('users')
-      .withIndex('by_workos_user_id', (q) => q.eq('workosUserId', identity.subject))
-      .unique();
+    const user = await getUserFromIdentity(ctx);
 
     if (!user) {
       throw new Error('User not found');
@@ -492,10 +478,7 @@ export const updateSizePreferences = mutation({
       throw new Error('Not authenticated');
     }
 
-    const user = await ctx.db
-      .query('users')
-      .withIndex('by_workos_user_id', (q) => q.eq('workosUserId', identity.subject))
-      .unique();
+    const user = await getUserFromIdentity(ctx);
 
     if (!user) {
       throw new Error('User not found');
@@ -538,10 +521,7 @@ export const updateBudgetPreferences = mutation({
       throw new Error('Not authenticated');
     }
 
-    const user = await ctx.db
-      .query('users')
-      .withIndex('by_workos_user_id', (q) => q.eq('workosUserId', identity.subject))
-      .unique();
+    const user = await getUserFromIdentity(ctx);
 
     if (!user) {
       throw new Error('User not found');
@@ -644,7 +624,7 @@ export const getOrCreateUser = mutation({
     v.object({
       _id: v.id('users'),
       _creationTime: v.number(),
-      workosUserId: v.string(),
+      workosUserId: v.optional(v.string()),
       email: v.string(),
       emailVerified: v.boolean(),
       username: v.optional(v.string()),
@@ -711,8 +691,11 @@ export const getOrCreateUser = mutation({
       return null;
     }
 
-    const workosUserId = identity.subject;
-    
+    const provider = providerFromIssuer(identity.issuer);
+    // Only WorkOS identities populate the legacy `workosUserId` column; Apple /
+    // Google identities are tracked purely via the `authIdentities` table.
+    const workosUserId = provider === 'workos' ? identity.subject : undefined;
+
     // Prioritize client-provided data over JWT claims (which are often empty)
     // The client has access to the full WorkOS user object via useAuth()
     let email = args.email || identity.email || '';
@@ -765,20 +748,16 @@ export const getOrCreateUser = mutation({
       firstName = cleanName.charAt(0).toUpperCase() + cleanName.slice(1).toLowerCase();
     }
 
-    // Check if user exists by email FIRST (prevents duplicates)
-    let user = email
-      ? await ctx.db
-          .query('users')
-          .withIndex('by_email', (q) => q.eq('email', email))
-          .first()
-      : null;
+    // Resolve an existing user. First by this exact auth identity (mapping table
+    // or legacy workosUserId), then by verified email to link a new provider to
+    // an existing account (e.g. WorkOS-first user now "Continue with Apple").
+    let user = await getUserFromIdentity(ctx);
 
-    if (!user) {
-      // No user with this email - check by workosUserId as fallback
+    if (!user && email) {
       user = await ctx.db
         .query('users')
-        .withIndex('by_workos_user_id', (q) => q.eq('workosUserId', workosUserId))
-        .unique();
+        .withIndex('by_email', (q) => q.eq('email', email))
+        .first();
     }
 
     if (user) {
@@ -793,8 +772,8 @@ export const getOrCreateUser = mutation({
         updatedAt: number;
       }> = {};
 
-      // Link the new WorkOS identity if different
-      if (user.workosUserId !== workosUserId) {
+      // Backfill legacy WorkOS id if this is a WorkOS login and it's not set.
+      if (workosUserId && user.workosUserId !== workosUserId) {
         updates.workosUserId = workosUserId;
       }
 
@@ -821,6 +800,9 @@ export const getOrCreateUser = mutation({
         user = await ctx.db.get(user._id);
       }
 
+      // Ensure this provider identity is linked for fast future logins.
+      await linkIdentity(ctx, identity, user!._id);
+
       return user;
     }
 
@@ -843,8 +825,53 @@ export const getOrCreateUser = mutation({
       updatedAt: now,
     });
 
+    await linkIdentity(ctx, identity, userId);
+
     user = await ctx.db.get(userId);
     return user;
+  },
+});
+
+/**
+ * One-time backfill: create an `authIdentities` row for every existing user
+ * that has a `workosUserId`, so pre-migration WorkOS sessions resolve through
+ * the new mapping table. Idempotent — safe to run multiple times.
+ * Run: npx convex run users/mutations:backfillAuthIdentities
+ */
+export const backfillAuthIdentities = internalMutation({
+  args: {},
+  returns: v.object({ scanned: v.number(), created: v.number() }),
+  handler: async (
+    ctx: MutationCtx,
+    _args: Record<string, never>
+  ): Promise<{ scanned: number; created: number }> => {
+    const clientId = process.env.WORKOS_CLIENT_ID;
+    const workosIssuer = `https://api.workos.com/user_management/${clientId}`;
+    const users = await ctx.db.query('users').collect();
+    let created = 0;
+
+    for (const user of users) {
+      if (!user.workosUserId) continue;
+      const existing = await ctx.db
+        .query('authIdentities')
+        .withIndex('by_issuer_subject', (q) =>
+          q.eq('issuer', workosIssuer).eq('subject', user.workosUserId!)
+        )
+        .unique();
+      if (existing) continue;
+
+      await ctx.db.insert('authIdentities', {
+        userId: user._id,
+        issuer: workosIssuer,
+        subject: user.workosUserId,
+        provider: 'workos',
+        email: user.email,
+        createdAt: Date.now(),
+      });
+      created++;
+    }
+
+    return { scanned: users.length, created };
   },
 });
 
@@ -1152,10 +1179,7 @@ export const updateStyleProfile = mutation({
     const identity = await ctx.auth.getUserIdentity();
     if (!identity) throw new Error('Not authenticated');
 
-    const user = await ctx.db
-      .query('users')
-      .withIndex('by_workos_user_id', (q) => q.eq('workosUserId', identity.subject))
-      .unique();
+    const user = await getUserFromIdentity(ctx);
     if (!user) throw new Error('User not found');
 
     await ctx.db.patch(user._id, {

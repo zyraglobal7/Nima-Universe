@@ -1,4 +1,5 @@
 import { query, QueryCtx } from '../_generated/server';
+import { getUserFromIdentity } from '../lib/auth';
 import { v } from 'convex/values';
 import type { Id } from '../_generated/dataModel';
 import { getBlockedUserIdSet } from '../moderation/queries';
@@ -41,10 +42,7 @@ export const getFriends = query({
       return [];
     }
 
-    const user = await ctx.db
-      .query('users')
-      .withIndex('by_workos_user_id', (q) => q.eq('workosUserId', identity.subject))
-      .unique();
+    const user = await getUserFromIdentity(ctx);
 
     if (!user) {
       return [];
@@ -151,10 +149,7 @@ export const getPendingFriendRequests = query({
       return [];
     }
 
-    const user = await ctx.db
-      .query('users')
-      .withIndex('by_workos_user_id', (q) => q.eq('workosUserId', identity.subject))
-      .unique();
+    const user = await getUserFromIdentity(ctx);
 
     if (!user) {
       return [];
@@ -207,10 +202,7 @@ export const areFriends = query({
       return false;
     }
 
-    const currentUser = await ctx.db
-      .query('users')
-      .withIndex('by_workos_user_id', (q) => q.eq('workosUserId', identity.subject))
-      .unique();
+    const currentUser = await getUserFromIdentity(ctx);
 
     if (!currentUser) {
       return false;
@@ -258,10 +250,7 @@ export const hasSentFriendRequest = query({
       return false;
     }
 
-    const currentUser = await ctx.db
-      .query('users')
-      .withIndex('by_workos_user_id', (q) => q.eq('workosUserId', identity.subject))
-      .unique();
+    const currentUser = await getUserFromIdentity(ctx);
 
     if (!currentUser) {
       return false;
@@ -310,10 +299,7 @@ export const getFriend = query({
       return null;
     }
 
-    const currentUser = await ctx.db
-      .query('users')
-      .withIndex('by_workos_user_id', (q) => q.eq('workosUserId', identity.subject))
-      .unique();
+    const currentUser = await getUserFromIdentity(ctx);
 
     if (!currentUser) {
       return null;

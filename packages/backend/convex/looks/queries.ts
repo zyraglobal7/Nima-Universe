@@ -1,4 +1,5 @@
 import { query, QueryCtx } from '../_generated/server';
+import { getUserFromIdentity } from '../lib/auth';
 import { v } from 'convex/values';
 import type { Id, Doc } from '../_generated/dataModel';
 import { DEFAULT_PAGE_SIZE, MAX_PAGE_SIZE } from '../types';
@@ -334,10 +335,7 @@ export const getFeedLooks = query({
     } | null = null;
 
     if (identity) {
-      const user = await ctx.db
-        .query('users')
-        .withIndex('by_workos_user_id', (q) => q.eq('workosUserId', identity.subject))
-        .unique();
+      const user = await getUserFromIdentity(ctx);
 
       if (user) {
         userPreferences = {
@@ -501,10 +499,7 @@ export const getLookWithFullDetails = query({
     let userId: Id<'users'> | null = null;
 
     if (identity) {
-      const user = await ctx.db
-        .query('users')
-        .withIndex('by_workos_user_id', (q) => q.eq('workosUserId', identity.subject))
-        .unique();
+      const user = await getUserFromIdentity(ctx);
       if (user) {
         userId = user._id;
       }
@@ -642,10 +637,7 @@ export const getLookWithFullDetailsByPublicId = query({
     let userId: Id<'users'> | null = null;
 
     if (identity) {
-      const user = await ctx.db
-        .query('users')
-        .withIndex('by_workos_user_id', (q) => q.eq('workosUserId', identity.subject))
-        .unique();
+      const user = await getUserFromIdentity(ctx);
       if (user) {
         userId = user._id;
       }
@@ -777,10 +769,7 @@ export const getUserGeneratedLooks = query({
     }
 
     // Get user
-    const user = await ctx.db
-      .query('users')
-      .withIndex('by_workos_user_id', (q) => q.eq('workosUserId', identity.subject))
-      .unique();
+    const user = await getUserFromIdentity(ctx);
 
     if (!user) {
       return [];
@@ -922,10 +911,7 @@ export const getMyLooksByCreator = query({
     }
 
     // Get user
-    const user = await ctx.db
-      .query('users')
-      .withIndex('by_workos_user_id', (q) => q.eq('workosUserId', identity.subject))
-      .unique();
+    const user = await getUserFromIdentity(ctx);
 
     if (!user) {
       return [];
@@ -1105,10 +1091,7 @@ export const getPublicLooks = query({
     const pendingRequestIds = new Set<string>();
 
     if (identity) {
-      const user = await ctx.db
-        .query('users')
-        .withIndex('by_workos_user_id', (q) => q.eq('workosUserId', identity.subject))
-        .unique();
+      const user = await getUserFromIdentity(ctx);
       if (user) {
         currentUserId = user._id;
 
@@ -1359,10 +1342,7 @@ export const getFriendsLooks = query({
       return [];
     }
 
-    const user = await ctx.db
-      .query('users')
-      .withIndex('by_workos_user_id', (q) => q.eq('workosUserId', identity.subject))
-      .unique();
+    const user = await getUserFromIdentity(ctx);
 
     if (!user) {
       return [];
@@ -1555,10 +1535,7 @@ export const getLookWithShareMetadataByPublicId = query({
     let currentUserId: Id<'users'> | null = null;
 
     if (identity) {
-      const user = await ctx.db
-        .query('users')
-        .withIndex('by_workos_user_id', (q) => q.eq('workosUserId', identity.subject))
-        .unique();
+      const user = await getUserFromIdentity(ctx);
       if (user) {
         currentUserId = user._id;
       }
@@ -1669,10 +1646,7 @@ export const getLookWithShareMetadata = query({
     let currentUserId: Id<'users'> | null = null;
 
     if (identity) {
-      const user = await ctx.db
-        .query('users')
-        .withIndex('by_workos_user_id', (q) => q.eq('workosUserId', identity.subject))
-        .unique();
+      const user = await getUserFromIdentity(ctx);
       if (user) {
         currentUserId = user._id;
       }
@@ -1793,10 +1767,7 @@ export const getMultipleLooksWithDetails = query({
     let userId: Id<'users'> | null = null;
 
     if (identity) {
-      const user = await ctx.db
-        .query('users')
-        .withIndex('by_workos_user_id', (q) => q.eq('workosUserId', identity.subject))
-        .unique();
+      const user = await getUserFromIdentity(ctx);
       if (user) {
         userId = user._id;
       }
@@ -1917,10 +1888,7 @@ export const getLookGenerationStatus = query({
       return null;
     }
 
-    const user = await ctx.db
-      .query('users')
-      .withIndex('by_workos_user_id', (q) => q.eq('workosUserId', identity.subject))
-      .unique();
+    const user = await getUserFromIdentity(ctx);
 
     if (!user) {
       return null;
@@ -2020,10 +1988,7 @@ export const getDiscardedLooks = query({
       return [];
     }
 
-    const user = await ctx.db
-      .query('users')
-      .withIndex('by_workos_user_id', (q) => q.eq('workosUserId', identity.subject))
-      .unique();
+    const user = await getUserFromIdentity(ctx);
 
     if (!user) {
       return [];
@@ -2168,10 +2133,7 @@ export const getSavedLooks = query({
       return [];
     }
 
-    const user = await ctx.db
-      .query('users')
-      .withIndex('by_workos_user_id', (q) => q.eq('workosUserId', identity.subject))
-      .unique();
+    const user = await getUserFromIdentity(ctx);
 
     if (!user) {
       return [];

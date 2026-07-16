@@ -5,6 +5,7 @@ import {
 } from '../_generated/server';
 import { Id } from '../_generated/dataModel';
 import { v } from 'convex/values';
+import { getUserFromIdentity } from '../lib/auth';
 
 /**
  * Create a new Connect API session
@@ -412,10 +413,7 @@ export const linkNimaUserPublic = mutation({
     const identity = await ctx.auth.getUserIdentity();
     if (!identity) throw new Error('Unauthorized');
 
-    const user = await ctx.db
-      .query('users')
-      .withIndex('by_workos_user_id', (q) => q.eq('workosUserId', identity.subject))
-      .first();
+    const user = await getUserFromIdentity(ctx);
     if (!user) throw new Error('User not found');
 
     const session = await ctx.db
@@ -445,10 +443,7 @@ export const deactivatePartnerPublic = mutation({
   ): Promise<null> => {
     const identity = await ctx.auth.getUserIdentity();
     if (!identity) throw new Error('Unauthorized');
-    const user = await ctx.db
-      .query('users')
-      .withIndex('by_workos_user_id', (q) => q.eq('workosUserId', identity.subject))
-      .first();
+    const user = await getUserFromIdentity(ctx);
     if (!user || user.role !== 'admin') throw new Error('Admin access required');
 
     await ctx.db.patch(args.partnerId, { isActive: false, updatedAt: Date.now() });

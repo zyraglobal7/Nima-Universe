@@ -1,4 +1,5 @@
 import { mutation, MutationCtx } from '../_generated/server';
+import { getUserFromIdentity } from '../lib/auth';
 import { v } from 'convex/values';
 import { internal } from '../_generated/api';
 import type { Id } from '../_generated/dataModel';
@@ -32,10 +33,7 @@ export const sendDirectMessage = mutation({
       };
     }
 
-    const sender = await ctx.db
-      .query('users')
-      .withIndex('by_workos_user_id', (q) => q.eq('workosUserId', identity.subject))
-      .unique();
+    const sender = await getUserFromIdentity(ctx);
 
     if (!sender) {
       return {
@@ -136,10 +134,7 @@ export const markDirectMessageAsRead = mutation({
       return { success: false };
     }
 
-    const user = await ctx.db
-      .query('users')
-      .withIndex('by_workos_user_id', (q) => q.eq('workosUserId', identity.subject))
-      .unique();
+    const user = await getUserFromIdentity(ctx);
 
     if (!user) {
       return { success: false };
@@ -178,10 +173,7 @@ export const markConversationAsRead = mutation({
       return { success: false, count: 0 };
     }
 
-    const user = await ctx.db
-      .query('users')
-      .withIndex('by_workos_user_id', (q) => q.eq('workosUserId', identity.subject))
-      .unique();
+    const user = await getUserFromIdentity(ctx);
 
     if (!user) {
       return { success: false, count: 0 };

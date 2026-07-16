@@ -1,4 +1,5 @@
 import { query, QueryCtx } from '../_generated/server';
+import { getUserFromIdentity } from '../lib/auth';
 import { v } from 'convex/values';
 import type { Id, Doc } from '../_generated/dataModel';
 import { DEFAULT_PAGE_SIZE, MAX_PAGE_SIZE } from '../types';
@@ -60,10 +61,7 @@ export const getLookbook = query({
         return null;
       }
 
-      const user = await ctx.db
-        .query('users')
-        .withIndex('by_workos_user_id', (q) => q.eq('workosUserId', identity.subject))
-        .unique();
+      const user = await getUserFromIdentity(ctx);
 
       if (!user || user._id !== lookbook.userId) {
         // Check if collaborator
@@ -115,10 +113,7 @@ export const listUserLookbooks = query({
       return [];
     }
 
-    const user = await ctx.db
-      .query('users')
-      .withIndex('by_workos_user_id', (q) => q.eq('workosUserId', identity.subject))
-      .unique();
+    const user = await getUserFromIdentity(ctx);
 
     if (!user) {
       return [];
@@ -180,10 +175,7 @@ export const getLookbookItems = query({
         return { items: [], nextCursor: null, hasMore: false };
       }
 
-      const user = await ctx.db
-        .query('users')
-        .withIndex('by_workos_user_id', (q) => q.eq('workosUserId', identity.subject))
-        .unique();
+      const user = await getUserFromIdentity(ctx);
 
       if (!user || (user._id !== lookbook.userId && !lookbook.collaboratorIds?.includes(user._id))) {
         return { items: [], nextCursor: null, hasMore: false };
@@ -298,10 +290,7 @@ export const getLookbookItemsWithDetails = query({
         return [];
       }
 
-      const user = await ctx.db
-        .query('users')
-        .withIndex('by_workos_user_id', (q) => q.eq('workosUserId', identity.subject))
-        .unique();
+      const user = await getUserFromIdentity(ctx);
 
       if (!user || (user._id !== lookbook.userId && !lookbook.collaboratorIds?.includes(user._id))) {
         return [];
@@ -331,10 +320,7 @@ export const getLookbookItemsWithDetails = query({
           let lookImageUrl: string | null = null;
           
           if (identity) {
-            const user = await ctx.db
-              .query('users')
-              .withIndex('by_workos_user_id', (q) => q.eq('workosUserId', identity.subject))
-              .unique();
+            const user = await getUserFromIdentity(ctx);
             
             if (user) {
               const lookImage = await ctx.db
@@ -450,10 +436,7 @@ export const isItemSaved = query({
       return { isSaved: false, lookbookIds: [] };
     }
 
-    const user = await ctx.db
-      .query('users')
-      .withIndex('by_workos_user_id', (q) => q.eq('workosUserId', identity.subject))
-      .unique();
+    const user = await getUserFromIdentity(ctx);
 
     if (!user) {
       return { isSaved: false, lookbookIds: [] };
@@ -502,10 +485,7 @@ export const isTryOnSaved = query({
       return false;
     }
 
-    const user = await ctx.db
-      .query('users')
-      .withIndex('by_workos_user_id', (q) => q.eq('workosUserId', identity.subject))
-      .unique();
+    const user = await getUserFromIdentity(ctx);
 
     if (!user) {
       return false;
@@ -586,10 +566,7 @@ export const listUserLookbooksWithCovers = query({
       return [];
     }
 
-    const user = await ctx.db
-      .query('users')
-      .withIndex('by_workos_user_id', (q) => q.eq('workosUserId', identity.subject))
-      .unique();
+    const user = await getUserFromIdentity(ctx);
 
     if (!user) {
       return [];

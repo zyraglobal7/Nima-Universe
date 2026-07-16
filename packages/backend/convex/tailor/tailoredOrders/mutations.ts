@@ -1,4 +1,5 @@
 import { mutation, internalMutation, MutationCtx } from '../../_generated/server';
+import { getUserFromIdentity } from '../../lib/auth';
 import { v } from 'convex/values';
 import { internal } from '../../_generated/api';
 import type { Id } from '../../_generated/dataModel';
@@ -49,10 +50,7 @@ export const create = mutation({
     const identity = await ctx.auth.getUserIdentity();
     if (!identity) throw new Error('Not authenticated');
 
-    const user = await ctx.db
-      .query('users')
-      .withIndex('by_workos_user_id', (q) => q.eq('workosUserId', identity.subject))
-      .unique();
+    const user = await getUserFromIdentity(ctx);
     if (!user) throw new Error('User not found');
 
     const item = await ctx.db.get(args.itemId);
@@ -212,10 +210,7 @@ export const advanceStatus = mutation({
     const identity = await ctx.auth.getUserIdentity();
     if (!identity) throw new Error('Not authenticated');
 
-    const user = await ctx.db
-      .query('users')
-      .withIndex('by_workos_user_id', (q) => q.eq('workosUserId', identity.subject))
-      .unique();
+    const user = await getUserFromIdentity(ctx);
     if (!user) throw new Error('User not found');
 
     const seller = await ctx.db

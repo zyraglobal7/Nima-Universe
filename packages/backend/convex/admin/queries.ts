@@ -1,4 +1,5 @@
 import { query, QueryCtx } from '../_generated/server';
+import { getUserFromIdentity } from '../lib/auth';
 import { v } from 'convex/values';
 import type { Id, Doc } from '../_generated/dataModel';
 import { DEFAULT_PAGE_SIZE, MAX_PAGE_SIZE, TIER_PRICES_KES } from '../types';
@@ -394,10 +395,7 @@ export const isCurrentUserAdmin = query({
       return false;
     }
 
-    const user = await ctx.db
-      .query('users')
-      .withIndex('by_workos_user_id', (q) => q.eq('workosUserId', identity.subject))
-      .unique();
+    const user = await getUserFromIdentity(ctx);
 
     if (!user) {
       return false;
@@ -554,10 +552,7 @@ export const listSellersAdmin = query({
   handler: async (ctx: QueryCtx, args: { tier?: 'basic' | 'starter' | 'growth' | 'premium'; limit?: number; cursor?: string }) => {
     const identity = await ctx.auth.getUserIdentity();
     if (!identity) throw new Error('Not authenticated');
-    const user = await ctx.db
-      .query('users')
-      .withIndex('by_workos_user_id', (q) => q.eq('workosUserId', identity.subject))
-      .unique();
+    const user = await getUserFromIdentity(ctx);
     if (!user || user.role !== 'admin') throw new Error('Not authorized');
 
     const limit = Math.min(args.limit ?? DEFAULT_PAGE_SIZE, MAX_PAGE_SIZE);
@@ -637,10 +632,7 @@ export const getSubscriptionStats = query({
   handler: async (ctx: QueryCtx) => {
     const identity = await ctx.auth.getUserIdentity();
     if (!identity) throw new Error('Not authenticated');
-    const user = await ctx.db
-      .query('users')
-      .withIndex('by_workos_user_id', (q) => q.eq('workosUserId', identity.subject))
-      .unique();
+    const user = await getUserFromIdentity(ctx);
     if (!user || user.role !== 'admin') throw new Error('Not authorized');
 
     const now = Date.now();
@@ -705,10 +697,7 @@ export const getTierConfigs = query({
   handler: async (ctx: QueryCtx) => {
     const identity = await ctx.auth.getUserIdentity();
     if (!identity) throw new Error('Not authenticated');
-    const user = await ctx.db
-      .query('users')
-      .withIndex('by_workos_user_id', (q) => q.eq('workosUserId', identity.subject))
-      .unique();
+    const user = await getUserFromIdentity(ctx);
     if (!user || user.role !== 'admin') throw new Error('Not authorized');
 
     return ctx.db.query('tier_config').collect();
@@ -746,10 +735,7 @@ export const getSellerForAdmin = query({
   } | null> => {
     const identity = await ctx.auth.getUserIdentity();
     if (!identity) throw new Error('Not authenticated');
-    const user = await ctx.db
-      .query('users')
-      .withIndex('by_workos_user_id', (q) => q.eq('workosUserId', identity.subject))
-      .unique();
+    const user = await getUserFromIdentity(ctx);
     if (!user || user.role !== 'admin') throw new Error('Not authorized');
 
     const seller = await ctx.db.get(args.sellerId);
@@ -798,10 +784,7 @@ export const getSellerSubscriptionsAdmin = query({
   handler: async (ctx: QueryCtx, args: { sellerId: Id<'sellers'> }) => {
     const identity = await ctx.auth.getUserIdentity();
     if (!identity) throw new Error('Not authenticated');
-    const user = await ctx.db
-      .query('users')
-      .withIndex('by_workos_user_id', (q) => q.eq('workosUserId', identity.subject))
-      .unique();
+    const user = await getUserFromIdentity(ctx);
     if (!user || user.role !== 'admin') throw new Error('Not authorized');
 
     return ctx.db
@@ -847,10 +830,7 @@ export const getPendingSellers = query({
     const identity = await ctx.auth.getUserIdentity();
     if (!identity) throw new Error('Not authenticated');
 
-    const user = await ctx.db
-      .query('users')
-      .withIndex('by_workos_user_id', (q) => q.eq('workosUserId', identity.subject))
-      .unique();
+    const user = await getUserFromIdentity(ctx);
     if (!user || user.role !== 'admin') throw new Error('Not authorized');
 
     const sellers = await ctx.db
@@ -903,10 +883,7 @@ export const getRecentSubscriptionEvents = query({
   }>> => {
     const identity = await ctx.auth.getUserIdentity();
     if (!identity) throw new Error('Not authenticated');
-    const user = await ctx.db
-      .query('users')
-      .withIndex('by_workos_user_id', (q) => q.eq('workosUserId', identity.subject))
-      .unique();
+    const user = await getUserFromIdentity(ctx);
     if (!user || user.role !== 'admin') throw new Error('Not authorized');
 
     // Get last 50 subscription events by creation time

@@ -1,4 +1,5 @@
 import { query, QueryCtx } from '../_generated/server';
+import { getUserFromIdentity } from '../lib/auth';
 import { v } from 'convex/values';
 import type { Id, Doc } from '../_generated/dataModel';
 
@@ -105,10 +106,7 @@ export const getUserWrapped = query({
       return null;
     }
 
-    const user = await ctx.db
-      .query('users')
-      .withIndex('by_workos_user_id', (q) => q.eq('workosUserId', identity.subject))
-      .unique();
+    const user = await getUserFromIdentity(ctx);
 
     if (!user) {
       return null;
@@ -235,10 +233,7 @@ export const isWrappedAvailable = query({
       return { available: false, isActive: false, hasData: false, hasViewed: false, shouldShow: false };
     }
 
-    const user = await ctx.db
-      .query('users')
-      .withIndex('by_workos_user_id', (q) => q.eq('workosUserId', identity.subject))
-      .unique();
+    const user = await getUserFromIdentity(ctx);
 
     if (!user) {
       return { available: false, isActive: false, hasData: false, hasViewed: false, shouldShow: false };
@@ -477,10 +472,7 @@ export const searchUsersWrapped = query({
   }>> => {
     const identity = await ctx.auth.getUserIdentity();
     if (!identity) throw new Error('Not authenticated');
-    const adminUser = await ctx.db
-      .query('users')
-      .withIndex('by_workos_user_id', (q) => q.eq('workosUserId', identity.subject))
-      .unique();
+    const adminUser = await getUserFromIdentity(ctx);
     if (!adminUser || adminUser.role !== 'admin') throw new Error('Not authorized');
 
     const term = args.searchTerm.trim().toLowerCase();

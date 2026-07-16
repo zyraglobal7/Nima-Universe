@@ -1,4 +1,5 @@
 import { mutation, internalMutation, MutationCtx } from '../_generated/server';
+import { getUserFromIdentity } from '../lib/auth';
 import { v } from 'convex/values';
 import type { Id } from '../_generated/dataModel';
 import { MAX_MESSAGE_LENGTH } from '../types';
@@ -40,10 +41,7 @@ export const sendMessage = mutation({
       throw new Error('Not authenticated');
     }
 
-    const user = await ctx.db
-      .query('users')
-      .withIndex('by_workos_user_id', (q) => q.eq('workosUserId', identity.subject))
-      .unique();
+    const user = await getUserFromIdentity(ctx);
 
     if (!user) {
       throw new Error('User not found');
@@ -129,10 +127,7 @@ export const saveAssistantMessage = mutation({
       throw new Error('Not authenticated');
     }
 
-    const user = await ctx.db
-      .query('users')
-      .withIndex('by_workos_user_id', (q) => q.eq('workosUserId', identity.subject))
-      .unique();
+    const user = await getUserFromIdentity(ctx);
 
     if (!user) {
       throw new Error('User not found');
@@ -268,10 +263,7 @@ export const deleteMessage = mutation({
       throw new Error('Not authenticated');
     }
 
-    const user = await ctx.db
-      .query('users')
-      .withIndex('by_workos_user_id', (q) => q.eq('workosUserId', identity.subject))
-      .unique();
+    const user = await getUserFromIdentity(ctx);
 
     if (!user) {
       throw new Error('User not found');
@@ -341,10 +333,7 @@ export const startConversation = mutation({
       throw new Error('Not authenticated');
     }
 
-    const user = await ctx.db
-      .query('users')
-      .withIndex('by_workos_user_id', (q) => q.eq('workosUserId', identity.subject))
-      .unique();
+    const user = await getUserFromIdentity(ctx);
 
     if (!user) {
       throw new Error('User not found');
@@ -431,10 +420,7 @@ export const saveFittingReadyMessage = mutation({
       throw new Error('Not authenticated');
     }
 
-    const user = await ctx.db
-      .query('users')
-      .withIndex('by_workos_user_id', (q) => q.eq('workosUserId', identity.subject))
-      .unique();
+    const user = await getUserFromIdentity(ctx);
 
     if (!user) {
       throw new Error('User not found');
@@ -491,10 +477,7 @@ export const saveNoMatchesMessage = mutation({
       throw new Error('Not authenticated');
     }
 
-    const user = await ctx.db
-      .query('users')
-      .withIndex('by_workos_user_id', (q) => q.eq('workosUserId', identity.subject))
-      .unique();
+    const user = await getUserFromIdentity(ctx);
 
     if (!user) {
       throw new Error('User not found');

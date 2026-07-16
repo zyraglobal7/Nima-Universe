@@ -1,4 +1,5 @@
 import { mutation, MutationCtx } from '../_generated/server';
+import { getUserFromIdentity } from '../lib/auth';
 import { v } from 'convex/values';
 import type { Id } from '../_generated/dataModel';
 import { internal } from '../_generated/api';
@@ -27,10 +28,7 @@ export const toggleLove = mutation({
       throw new Error('Not authenticated');
     }
 
-    const user = await ctx.db
-      .query('users')
-      .withIndex('by_workos_user_id', (q) => q.eq('workosUserId', identity.subject))
-      .unique();
+    const user = await getUserFromIdentity(ctx);
 
     if (!user) {
       throw new Error('User not found');
@@ -126,10 +124,7 @@ export const toggleDislike = mutation({
       throw new Error('Not authenticated');
     }
 
-    const user = await ctx.db
-      .query('users')
-      .withIndex('by_workos_user_id', (q) => q.eq('workosUserId', identity.subject))
-      .unique();
+    const user = await getUserFromIdentity(ctx);
 
     if (!user) {
       throw new Error('User not found');
@@ -198,10 +193,7 @@ export const recordSave = mutation({
       throw new Error('Not authenticated');
     }
 
-    const user = await ctx.db
-      .query('users')
-      .withIndex('by_workos_user_id', (q) => q.eq('workosUserId', identity.subject))
-      .unique();
+    const user = await getUserFromIdentity(ctx);
 
     if (!user) {
       throw new Error('User not found');
@@ -277,10 +269,7 @@ export const markActivityAsSeen = mutation({
       throw new Error('Not authenticated');
     }
 
-    const user = await ctx.db
-      .query('users')
-      .withIndex('by_workos_user_id', (q) => q.eq('workosUserId', identity.subject))
-      .unique();
+    const user = await getUserFromIdentity(ctx);
 
     if (!user) {
       throw new Error('User not found');

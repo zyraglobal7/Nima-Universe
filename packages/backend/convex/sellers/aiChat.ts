@@ -1,4 +1,5 @@
 import { internalQuery, mutation, query } from '../_generated/server';
+import { getUserFromIdentity } from '../lib/auth';
 import { v } from 'convex/values';
 import { ConvexError } from 'convex/values';
 import type { QueryCtx, MutationCtx } from '../_generated/server';
@@ -10,10 +11,7 @@ async function getAuthenticatedSeller(ctx: QueryCtx | MutationCtx) {
   const identity = await ctx.auth.getUserIdentity();
   if (!identity) throw new ConvexError('Not authenticated');
 
-  const user = await ctx.db
-    .query('users')
-    .withIndex('by_workos_user_id', (q) => q.eq('workosUserId', identity.subject))
-    .unique();
+  const user = await getUserFromIdentity(ctx);
   if (!user) throw new ConvexError('User not found');
 
   const seller = await ctx.db
@@ -345,10 +343,7 @@ export const getSellerChatHistory = query({
     const identity = await ctx.auth.getUserIdentity();
     if (!identity) return null;
 
-    const user = await ctx.db
-      .query('users')
-      .withIndex('by_workos_user_id', (q) => q.eq('workosUserId', identity.subject))
-      .unique();
+    const user = await getUserFromIdentity(ctx);
     if (!user) return null;
 
     const seller = await ctx.db

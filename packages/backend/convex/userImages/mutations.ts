@@ -1,4 +1,5 @@
 import { mutation, internalMutation, MutationCtx } from '../_generated/server';
+import { getUserFromIdentity } from '../lib/auth';
 import { v } from 'convex/values';
 import type { Id, Doc } from '../_generated/dataModel';
 import {
@@ -210,10 +211,7 @@ export const claimOnboardingImages = mutation({
     }
 
     // Get the user
-    const user = await ctx.db
-      .query('users')
-      .withIndex('by_workos_user_id', (q) => q.eq('workosUserId', identity.subject))
-      .unique();
+    const user = await getUserFromIdentity(ctx);
 
     if (!user) {
       throw new Error('User not found');
@@ -345,10 +343,7 @@ export const deleteAllUserImages = mutation({
     }
 
     // Get user
-    const user = await ctx.db
-      .query('users')
-      .withIndex('by_workos_user_id', (q) => q.eq('workosUserId', identity.subject))
-      .unique();
+    const user = await getUserFromIdentity(ctx);
 
     if (!user) {
       throw new Error('User not found');
@@ -394,10 +389,7 @@ export const generateUploadUrl = mutation({
     }
 
     // Verify user exists
-    const user = await ctx.db
-      .query('users')
-      .withIndex('by_workos_user_id', (q) => q.eq('workosUserId', identity.subject))
-      .unique();
+    const user = await getUserFromIdentity(ctx);
 
     if (!user) {
       throw new Error('User not found');
@@ -452,10 +444,7 @@ export const saveUserImage = mutation({
       throw new Error('Not authenticated');
     }
 
-    const user = await ctx.db
-      .query('users')
-      .withIndex('by_workos_user_id', (q) => q.eq('workosUserId', identity.subject))
-      .unique();
+    const user = await getUserFromIdentity(ctx);
 
     if (!user) {
       throw new Error('User not found');
@@ -527,10 +516,7 @@ export const deleteUserImage = mutation({
       throw new Error('Not authenticated');
     }
 
-    const user = await ctx.db
-      .query('users')
-      .withIndex('by_workos_user_id', (q) => q.eq('workosUserId', identity.subject))
-      .unique();
+    const user = await getUserFromIdentity(ctx);
 
     if (!user) {
       throw new Error('User not found');
@@ -589,10 +575,7 @@ export const setPrimaryImage = mutation({
       throw new Error('Not authenticated');
     }
 
-    const user = await ctx.db
-      .query('users')
-      .withIndex('by_workos_user_id', (q) => q.eq('workosUserId', identity.subject))
-      .unique();
+    const user = await getUserFromIdentity(ctx);
 
     if (!user) {
       throw new Error('User not found');
@@ -666,10 +649,7 @@ export const updateImageType = mutation({
       throw new Error('Not authenticated');
     }
 
-    const user = await ctx.db
-      .query('users')
-      .withIndex('by_workos_user_id', (q) => q.eq('workosUserId', identity.subject))
-      .unique();
+    const user = await getUserFromIdentity(ctx);
 
     if (!user) {
       throw new Error('User not found');

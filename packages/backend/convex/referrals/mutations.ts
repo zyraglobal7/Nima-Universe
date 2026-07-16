@@ -1,4 +1,5 @@
 import { mutation, internalMutation, MutationCtx } from '../_generated/server';
+import { getUserFromIdentity } from '../lib/auth';
 import { v } from 'convex/values';
 import type { Id } from '../_generated/dataModel';
 
@@ -12,10 +13,7 @@ export const generateReferralCode = mutation({
     const identity = await ctx.auth.getUserIdentity();
     if (!identity) throw new Error('Not authenticated');
 
-    const user = await ctx.db
-      .query('users')
-      .withIndex('by_workos_user_id', (q) => q.eq('workosUserId', identity.subject))
-      .unique();
+    const user = await getUserFromIdentity(ctx);
     if (!user) throw new Error('User not found');
 
     // Return existing code if already generated
@@ -55,10 +53,7 @@ export const applyReferralCode = mutation({
     const identity = await ctx.auth.getUserIdentity();
     if (!identity) throw new Error('Not authenticated');
 
-    const currentUser = await ctx.db
-      .query('users')
-      .withIndex('by_workos_user_id', (q) => q.eq('workosUserId', identity.subject))
-      .unique();
+    const currentUser = await getUserFromIdentity(ctx);
     if (!currentUser) throw new Error('User not found');
 
     // Check if user has already used a referral code
@@ -148,10 +143,7 @@ export const useReferralCredits = mutation({
     const identity = await ctx.auth.getUserIdentity();
     if (!identity) throw new Error('Not authenticated');
 
-    const user = await ctx.db
-      .query('users')
-      .withIndex('by_workos_user_id', (q) => q.eq('workosUserId', identity.subject))
-      .unique();
+    const user = await getUserFromIdentity(ctx);
     if (!user) throw new Error('User not found');
 
     const now = Date.now();

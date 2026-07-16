@@ -5,6 +5,7 @@ import {
 } from '../_generated/server';
 import { Id } from '../_generated/dataModel';
 import { v } from 'convex/values';
+import { getUserFromIdentity } from '../lib/auth';
 
 const PLAN_LIMITS: Record<string, number> = {
   free: 50,
@@ -501,10 +502,7 @@ export const getPartnersAdmin = query({
     const identity = await ctx.auth.getUserIdentity();
     if (!identity) return null;
 
-    const user = await ctx.db
-      .query('users')
-      .withIndex('by_workos_user_id', (q) => q.eq('workosUserId', identity.subject))
-      .first();
+    const user = await getUserFromIdentity(ctx);
     if (!user || user.role !== 'admin') return null;
 
     const partners = await ctx.db.query('api_partners').order('desc').collect();
@@ -571,10 +569,7 @@ export const getMyPartner = query({
     const identity = await ctx.auth.getUserIdentity();
     if (!identity) return null;
 
-    const user = await ctx.db
-      .query('users')
-      .withIndex('by_workos_user_id', (q) => q.eq('workosUserId', identity.subject))
-      .first();
+    const user = await getUserFromIdentity(ctx);
     if (!user) return null;
 
     const seller = await ctx.db
@@ -644,10 +639,7 @@ export const getMyRecentUsageLogs = query({
     const identity = await ctx.auth.getUserIdentity();
     if (!identity) return [];
 
-    const user = await ctx.db
-      .query('users')
-      .withIndex('by_workos_user_id', (q) => q.eq('workosUserId', identity.subject))
-      .first();
+    const user = await getUserFromIdentity(ctx);
     if (!user) return [];
 
     const seller = await ctx.db

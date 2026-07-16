@@ -1,4 +1,5 @@
 import { mutation, internalMutation, MutationCtx } from '../_generated/server';
+import { getUserFromIdentity } from '../lib/auth';
 import { internal } from '../_generated/api';
 import { v } from 'convex/values';
 import type { Id, Doc } from '../_generated/dataModel';
@@ -376,10 +377,7 @@ export const markTriedOn = mutation({
     if (!rec) throw new Error('Recommendation not found');
 
     // Verify ownership
-    const user = await ctx.db
-      .query('users')
-      .withIndex('by_workos_user_id', (q) => q.eq('workosUserId', identity.subject))
-      .unique();
+    const user = await getUserFromIdentity(ctx);
     if (!user || rec.userId !== user._id) throw new Error('Not authorized');
 
     await ctx.db.patch(args.recommendationId, { status: 'tried_on' });

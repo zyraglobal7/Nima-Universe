@@ -1,4 +1,5 @@
 import { query, QueryCtx } from '../_generated/server';
+import { getUserFromIdentity } from '../lib/auth';
 import { v } from 'convex/values';
 import type { Id } from '../_generated/dataModel';
 
@@ -12,10 +13,7 @@ export const getMyReferralCode = query({
     const identity = await ctx.auth.getUserIdentity();
     if (!identity) return null;
 
-    const user = await ctx.db
-      .query('users')
-      .withIndex('by_workos_user_id', (q) => q.eq('workosUserId', identity.subject))
-      .unique();
+    const user = await getUserFromIdentity(ctx);
     if (!user) return null;
 
     return user.referralCode ?? null;
@@ -51,10 +49,7 @@ export const getMyReferralCredits = query({
     const identity = await ctx.auth.getUserIdentity();
     if (!identity) return { totalKes: 0, credits: [] };
 
-    const user = await ctx.db
-      .query('users')
-      .withIndex('by_workos_user_id', (q) => q.eq('workosUserId', identity.subject))
-      .unique();
+    const user = await getUserFromIdentity(ctx);
     if (!user) return { totalKes: 0, credits: [] };
 
     const now = Date.now();

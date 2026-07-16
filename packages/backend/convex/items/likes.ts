@@ -1,5 +1,6 @@
 import { v } from 'convex/values';
 import { query, mutation, QueryCtx, MutationCtx } from '../_generated/server';
+import { getUserFromIdentity } from '../lib/auth';
 import { Id, Doc } from '../_generated/dataModel';
 
 /**
@@ -22,10 +23,7 @@ export const toggleLike = mutation({
     }
 
     // Get the user
-    const user = await ctx.db
-      .query('users')
-      .withIndex('by_workos_user_id', (q) => q.eq('workosUserId', identity.subject))
-      .unique();
+    const user = await getUserFromIdentity(ctx);
 
     if (!user) {
       throw new Error('User not found');
@@ -93,10 +91,7 @@ export const isItemLiked = query({
     }
 
     // Get the user
-    const user = await ctx.db
-      .query('users')
-      .withIndex('by_workos_user_id', (q) => q.eq('workosUserId', identity.subject))
-      .unique();
+    const user = await getUserFromIdentity(ctx);
 
     if (!user) {
       return false;
@@ -170,10 +165,7 @@ export const getLikedItems = query({
     }
 
     // Get the user
-    const user = await ctx.db
-      .query('users')
-      .withIndex('by_workos_user_id', (q) => q.eq('workosUserId', identity.subject))
-      .unique();
+    const user = await getUserFromIdentity(ctx);
 
     if (!user) {
       return [];
@@ -245,10 +237,7 @@ export const getLikedItemIds = query({
     }
 
     // Get the user
-    const user = await ctx.db
-      .query('users')
-      .withIndex('by_workos_user_id', (q) => q.eq('workosUserId', identity.subject))
-      .unique();
+    const user = await getUserFromIdentity(ctx);
 
     if (!user) {
       return [];

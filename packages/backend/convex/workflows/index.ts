@@ -6,6 +6,7 @@
 import { WorkflowManager } from '@convex-dev/workflow';
 import { components, internal } from '../_generated/api';
 import { mutation, query, MutationCtx, QueryCtx } from '../_generated/server';
+import { getUserFromIdentity } from '../lib/auth';
 import { v } from 'convex/values';
 import type { Id } from '../_generated/dataModel';
 import { calculateAvailableCredits } from '../types';
@@ -61,10 +62,7 @@ export const shouldStartOnboardingWorkflow = query({
     }
 
     // Get user
-    const user = await ctx.db
-      .query('users')
-      .withIndex('by_workos_user_id', (q) => q.eq('workosUserId', identity.subject))
-      .unique();
+    const user = await getUserFromIdentity(ctx);
 
     if (!user) {
       return {
@@ -151,10 +149,7 @@ export const startOnboardingWorkflow = mutation({
     }
 
     // Get user
-    const user = await ctx.db
-      .query('users')
-      .withIndex('by_workos_user_id', (q) => q.eq('workosUserId', identity.subject))
-      .unique();
+    const user = await getUserFromIdentity(ctx);
 
     if (!user) {
       return {
@@ -248,10 +243,7 @@ export const startGenerateMoreLooks = mutation({
     }
 
     // Get user
-    const user = await ctx.db
-      .query('users')
-      .withIndex('by_workos_user_id', (q) => q.eq('workosUserId', identity.subject))
-      .unique();
+    const user = await getUserFromIdentity(ctx);
 
     if (!user) {
       return {
@@ -444,10 +436,7 @@ export const startItemTryOn = mutation({
       };
     }
 
-    const user = await ctx.db
-      .query('users')
-      .withIndex('by_workos_user_id', (q) => q.eq('workosUserId', identity.subject))
-      .unique();
+    const user = await getUserFromIdentity(ctx);
 
     if (!user) {
       return {
@@ -626,10 +615,7 @@ export const getOnboardingWorkflowStatus = query({
       };
     }
 
-    const user = await ctx.db
-      .query('users')
-      .withIndex('by_workos_user_id', (q) => q.eq('workosUserId', identity.subject))
-      .unique();
+    const user = await getUserFromIdentity(ctx);
 
     if (!user) {
       return {

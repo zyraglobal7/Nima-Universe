@@ -1,4 +1,5 @@
 import { query, QueryCtx } from '../_generated/server';
+import { getUserFromIdentity } from '../lib/auth';
 import { v } from 'convex/values';
 import type { Id, Doc } from '../_generated/dataModel';
 
@@ -31,10 +32,7 @@ export const getLookInteractionCounts = query({
     let currentUserId: Id<'users'> | null = null;
     const identity = await ctx.auth.getUserIdentity();
     if (identity) {
-      const user = await ctx.db
-        .query('users')
-        .withIndex('by_workos_user_id', (q) => q.eq('workosUserId', identity.subject))
-        .unique();
+      const user = await getUserFromIdentity(ctx);
       if (user) {
         currentUserId = user._id;
       }
@@ -102,10 +100,7 @@ export const getUserInteractionForLook = query({
       return { isLoved: false, isDisliked: false, isSaved: false };
     }
 
-    const user = await ctx.db
-      .query('users')
-      .withIndex('by_workos_user_id', (q) => q.eq('workosUserId', identity.subject))
-      .unique();
+    const user = await getUserFromIdentity(ctx);
 
     if (!user) {
       return { isLoved: false, isDisliked: false, isSaved: false };
@@ -187,10 +182,7 @@ export const getActivityNotifications = query({
       return [];
     }
 
-    const currentUser = await ctx.db
-      .query('users')
-      .withIndex('by_workos_user_id', (q) => q.eq('workosUserId', identity.subject))
-      .unique();
+    const currentUser = await getUserFromIdentity(ctx);
 
     if (!currentUser) {
       return [];
@@ -298,10 +290,7 @@ export const getUnreadActivityCount = query({
       return 0;
     }
 
-    const currentUser = await ctx.db
-      .query('users')
-      .withIndex('by_workos_user_id', (q) => q.eq('workosUserId', identity.subject))
-      .unique();
+    const currentUser = await getUserFromIdentity(ctx);
 
     if (!currentUser) {
       return 0;
@@ -411,10 +400,7 @@ export const getBatchUserLoveStatus = query({
       return result;
     }
 
-    const user = await ctx.db
-      .query('users')
-      .withIndex('by_workos_user_id', (q) => q.eq('workosUserId', identity.subject))
-      .unique();
+    const user = await getUserFromIdentity(ctx);
 
     if (!user) {
       for (const lookId of args.lookIds) {
