@@ -11,8 +11,10 @@ export default defineSchema({
    * Contains auth info, profile data, onboarding preferences, and subscription status
    */
   users: defineTable({
-    // WorkOS linkage
-    workosUserId: v.string(), // WorkOS user ID (subject from JWT)
+    // Legacy WorkOS linkage. Optional now that identity can come from native
+    // Apple / Google sign-in as well — canonical identity lives in the
+    // `authIdentities` table. Kept + indexed for back-compat resolution.
+    workosUserId: v.optional(v.string()), // WorkOS user ID (subject from WorkOS JWT)
     email: v.string(),
     emailVerified: v.boolean(),
 
@@ -88,6 +90,27 @@ export default defineSchema({
     .index('by_email', ['email'])
     .index('by_username', ['username'])
     .index('by_referral_code', ['referralCode']),
+
+  /**
+   * Maps an auth provider identity (issuer + subject from the verified JWT) to a
+   * canonical Convex user. Lets one user sign in via WorkOS (email/password),
+   * native Sign in with Apple, and native Google, all resolving to the same
+   * account (linked by verified email on first sign-in).
+   */
+  authIdentities: defineTable({
+    userId: v.id('users'),
+    issuer: v.string(), // JWT `iss` (e.g. https://appleid.apple.com)
+    subject: v.string(), // JWT `sub`
+    provider: v.union(
+      v.literal('workos'),
+      v.literal('apple'),
+      v.literal('google')
+    ),
+    email: v.optional(v.string()),
+    createdAt: v.number(),
+  })
+    .index('by_issuer_subject', ['issuer', 'subject'])
+    .index('by_user', ['userId']),
 
   /**
    * referrals - Tracks referral relationships and credit rewards
