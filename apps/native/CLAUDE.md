@@ -54,6 +54,9 @@ HTTP endpoints for webhooks (WorkOS, Fingo Pay) and health check are in `convex/
 
 ### Auth Flow
 
+Three providers, all validated by Convex `customJwt` (`packages/backend/convex/auth.config.ts`): **WorkOS** (email/password, hosted PKCE), **native Sign in with Apple** (`expo-apple-authentication`), and **native Google** (`@react-native-google-signin`). Apple/Google id_tokens are passed straight to `ConvexProviderWithAuth`. Identity across providers resolves via the `authIdentities` table + `lib/auth.ts` helpers (`getUserFromIdentity`/`requireUser`) — do NOT inline `by_workos_user_id` lookups. `signInWithApple`/`signInWithGoogle` live in `lib/auth.ts`; `fetchAccessToken` is provider-aware (Google→`signInSilently`, Apple→silent re-auth via `getCredentialStateAsync`).
+
+WorkOS email/password flow:
 1. `lib/auth.ts` launches WorkOS hosted login via expo-web-browser with PKCE
 2. Auth code returned to `app/callback.tsx`
 3. Code exchanged for tokens via Convex action (`convex/auth.ts`) to avoid CORS

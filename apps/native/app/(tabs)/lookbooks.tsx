@@ -22,6 +22,7 @@ import { useQuery } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import { formatPrice } from "@/lib/utils/format";
 import Animated, { FadeInDown } from "react-native-reanimated";
+import { useResponsiveLayout } from "@/lib/hooks/useResponsiveLayout";
 
 type TabId = "saved" | "liked" | "lookbooks";
 
@@ -51,7 +52,12 @@ export default function LookbooksScreen() {
     (activeTab === "liked" && likedItems === undefined) ||
     (activeTab === "lookbooks" && lookbooks === undefined);
 
-  const cardWidth = (width - 48) / 2; // 2 columns with padding
+  // Responsive grid: 2 columns on phones, 3+ on iPad.
+  const { columns } = useResponsiveLayout(2, 3);
+  const GRID_GAP = 12;
+  const H_PADDING = 16;
+  const cardWidth =
+    (width - H_PADDING * 2 - GRID_GAP * (columns - 1)) / columns;
 
   /* ─── Tab Switcher ─── */
   const renderTabSwitcher = () => (
@@ -107,7 +113,8 @@ export default function LookbooksScreen() {
     return (
       <FlatList
         data={savedLooks}
-        numColumns={2}
+        key={`cols-${columns}`}
+        numColumns={columns}
         columnWrapperStyle={{ gap: 12 }}
         contentContainerStyle={{
           paddingHorizontal: 16,
@@ -208,7 +215,8 @@ export default function LookbooksScreen() {
     return (
       <FlatList
         data={likedItems}
-        numColumns={2}
+        key={`cols-${columns}`}
+        numColumns={columns}
         columnWrapperStyle={{ gap: 12 }}
         contentContainerStyle={{
           paddingHorizontal: 16,
@@ -307,7 +315,8 @@ export default function LookbooksScreen() {
         ) : (
           <FlatList
             data={lookbooks}
-            numColumns={2}
+            key={`cols-${columns}`}
+            numColumns={columns}
             columnWrapperStyle={{ gap: 12 }}
             contentContainerStyle={{
               paddingHorizontal: 16,

@@ -30,6 +30,7 @@ import { Text } from "@/components/ui/Text";
 import { RecommendationCard } from "@/components/engine/RecommendationCard";
 import { WardrobeUploadSheet } from "@/components/wardrobe/WardrobeUploadSheet";
 import { useTheme } from "@/lib/contexts/ThemeContext";
+import { useResponsiveLayout } from "@/lib/hooks/useResponsiveLayout";
 
 const { width: SCREEN_W, height: SCREEN_H } = Dimensions.get("window");
 const WARDROBE_COLUMN_GAP = 12;
@@ -341,6 +342,11 @@ function NewTab() {
 // ─────────────────────────────────────────────
 function WardrobeTab() {
   const { isDark } = useTheme();
+  // Responsive tile grid: 2 columns on phones, 3+ on iPad. Computed from the
+  // live window width (not the module-level Dimensions snapshot) so it adapts.
+  const { width: winWidth, columns } = useResponsiveLayout(2, 3);
+  const tileSize =
+    (winWidth - 32 - WARDROBE_COLUMN_GAP * (columns - 1)) / columns;
   const [activeCategory, setActiveCategory] = useState<string>("All");
   const [showUploadSheet, setShowUploadSheet] = useState(false);
   const [uploadDefaultSource, setUploadDefaultSource] = useState<"single_upload" | "closet_scan" | undefined>();
@@ -395,7 +401,10 @@ function WardrobeTab() {
     <Pressable
       onPress={() => setViewerItem({ items: itemsAsViewerItems, initialIndex: index })}
       onLongPress={() => setLongPressId(item._id)}
-      style={[styles.wardrobeTile, { backgroundColor: surface, borderColor: border }]}
+      style={[
+        styles.wardrobeTile,
+        { width: tileSize, height: tileSize, backgroundColor: surface, borderColor: border },
+      ]}
     >
       {item.imageUrl ? (
         <Image source={{ uri: item.imageUrl }} style={styles.wardrobeTileImage} resizeMode="cover" />
@@ -449,7 +458,8 @@ function WardrobeTab() {
         data={items as ViewerItem[]}
         keyExtractor={(item) => item._id}
         renderItem={renderTile}
-        numColumns={2}
+        key={`wardrobe-cols-${columns}`}
+        numColumns={columns}
         columnWrapperStyle={{ gap: WARDROBE_COLUMN_GAP }}
         contentContainerStyle={{ paddingHorizontal: 16, paddingBottom: 100, paddingTop: 4 }}
         showsVerticalScrollIndicator={false}

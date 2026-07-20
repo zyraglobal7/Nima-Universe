@@ -3,10 +3,10 @@ import {
   FlatList,
   ActivityIndicator,
   Pressable,
-  useWindowDimensions,
 } from "react-native";
 import { Text } from "@/components/ui/Text";
 import { Sparkles } from "lucide-react-native";
+import { useResponsiveLayout } from "@/lib/hooks/useResponsiveLayout";
 import { LookCard, type LookWithStatus } from "./LookCard";
 import {
   LookCardWithCreator,
@@ -52,26 +52,27 @@ export function LookGrid({
   emptyMessage = "Check back soon!",
   emptyCTA,
 }: LookGridProps) {
-  const { width } = useWindowDimensions();
+  const { width, columns, horizontalPadding } = useResponsiveLayout(2, 3);
   const isCreatorMode = !!looksWithCreators;
   const data = isCreatorMode ? looksWithCreators! : (looks ?? []);
 
-  // Explicit column width: screen width minus horizontal padding (16*2) minus gap (16), divided by 2
-  const columnWidth = (width - 32 - 16) / 2;
+  const GAP = 16;
+  // Column width: screen width minus horizontal padding on both sides minus the
+  // inter-column gaps, divided by the (responsive) number of columns.
+  const columnWidth =
+    (width - horizontalPadding * 2 - GAP * (columns - 1)) / columns;
 
   // Loading skeleton
   if (isLoading) {
     return (
-      <View className="px-4">
-        <View style={{ flexDirection: "row", gap: 16 }}>
-          <View style={{ width: columnWidth }}>
-            <LookSkeleton />
-            <LookSkeleton />
-          </View>
-          <View style={{ width: columnWidth }}>
-            <LookSkeleton />
-            <LookSkeleton />
-          </View>
+      <View style={{ paddingHorizontal: horizontalPadding }}>
+        <View style={{ flexDirection: "row", gap: GAP }}>
+          {Array.from({ length: columns }).map((_, c) => (
+            <View key={c} style={{ width: columnWidth }}>
+              <LookSkeleton />
+              <LookSkeleton />
+            </View>
+          ))}
         </View>
       </View>
     );
@@ -95,53 +96,41 @@ export function LookGrid({
     );
   }
 
-  // Masonry-style 2-column layout using dual column approach
-  // Split data into two columns for a Pinterest/masonry effect
-  const leftColumn: typeof data = [];
-  const rightColumn: typeof data = [];
+  // Masonry-style layout: distribute items across `columns` columns
+  // round-robin for a Pinterest/masonry effect.
+  const columnData: (typeof data)[] = Array.from({ length: columns }, () => []);
   data.forEach((item, i) => {
-    if (i % 2 === 0) leftColumn.push(item);
-    else rightColumn.push(item);
+    columnData[i % columns].push(item);
   });
 
   return (
-    <View className="px-4" style={{ flexDirection: "row", gap: 16 }}>
-      {/* Left column */}
-      <View style={{ width: columnWidth }}>
-        {leftColumn.map((item, i) =>
-          isCreatorMode ? (
-            <LookCardWithCreator
-              key={(item as LookWithCreator).id}
-              look={item as LookWithCreator}
-              index={i * 2}
-            />
-          ) : (
-            <LookCard
-              key={(item as LookWithStatus).id}
-              look={item as LookWithStatus}
-              index={i * 2}
-            />
-          ),
-        )}
-      </View>
-      {/* Right column */}
-      <View style={{ width: columnWidth }}>
-        {rightColumn.map((item, i) =>
-          isCreatorMode ? (
-            <LookCardWithCreator
-              key={(item as LookWithCreator).id}
-              look={item as LookWithCreator}
-              index={i * 2 + 1}
-            />
-          ) : (
-            <LookCard
-              key={(item as LookWithStatus).id}
-              look={item as LookWithStatus}
-              index={i * 2 + 1}
-            />
-          ),
-        )}
-      </View>
+    <View
+      style={{
+        flexDirection: "row",
+        gap: GAP,
+        paddingHorizontal: horizontalPadding,
+      }}
+    >
+      {columnData.map((column, colIndex) => (
+        <View key={colIndex} style={{ width: columnWidth }}>
+          {column.map((item, i) => {
+            const originalIndex = i * columns + colIndex;
+            return isCreatorMode ? (
+              <LookCardWithCreator
+                key={(item as LookWithCreator).id}
+                look={item as LookWithCreator}
+                index={originalIndex}
+              />
+            ) : (
+              <LookCard
+                key={(item as LookWithStatus).id}
+                look={item as LookWithStatus}
+                index={originalIndex}
+              />
+            );
+          })}
+        </View>
+      ))}
     </View>
   );
 }

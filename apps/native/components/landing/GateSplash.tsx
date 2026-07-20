@@ -1,13 +1,14 @@
 import React, { useEffect, useRef, useState } from "react";
-import { View, Animated, Easing, Dimensions, StyleSheet } from "react-native";
+import { View, Animated, Easing, Dimensions, StyleSheet, Platform } from "react-native";
 import { Text } from "@/components/ui/Text";
 import { Button } from "@/components/ui/Button";
 import { LinearGradient } from "expo-linear-gradient";
 import { ChatBubble } from "./ChatBubble";
 import { useRouter } from "expo-router";
-import { launchWorkOSAuth } from "@/lib/auth";
+import { launchWorkOSAuth, signInWithApple, signInWithGoogle } from "@/lib/auth";
 import { useTheme } from "@/lib/contexts/ThemeContext";
 import * as WebBrowser from "expo-web-browser";
+import * as AppleAuthentication from "expo-apple-authentication";
 
 interface GateSplashProps {
   /** @deprecated No longer used — auth is initiated directly from the splash */
@@ -82,6 +83,28 @@ export function GateSplash({ onGetStarted }: GateSplashProps) {
       // If result is null, user cancelled — do nothing
     } catch (err) {
       console.error("[SIGN_IN] Error:", err);
+    }
+  };
+
+  const handleAppleSignIn = async () => {
+    try {
+      const result = await signInWithApple();
+      if (result) {
+        router.replace("/");
+      }
+    } catch (err) {
+      console.error("[SIGN_IN] Apple error:", err);
+    }
+  };
+
+  const handleGoogleSignIn = async () => {
+    try {
+      const result = await signInWithGoogle();
+      if (result) {
+        router.replace("/");
+      }
+    } catch (err) {
+      console.error("[SIGN_IN] Google error:", err);
     }
   };
 
@@ -160,9 +183,33 @@ export function GateSplash({ onGetStarted }: GateSplashProps) {
 
           {/* Actions */}
           <View className="w-full max-w-[18rem] items-center gap-4">
+            {Platform.OS === "ios" && (
+              <AppleAuthentication.AppleAuthenticationButton
+                buttonType={
+                  AppleAuthentication.AppleAuthenticationButtonType.CONTINUE
+                }
+                buttonStyle={
+                  isDark
+                    ? AppleAuthentication.AppleAuthenticationButtonStyle.WHITE
+                    : AppleAuthentication.AppleAuthenticationButtonStyle.BLACK
+                }
+                cornerRadius={12}
+                style={{ width: "100%", height: 48 }}
+                onPress={handleAppleSignIn}
+              />
+            )}
+            {Platform.OS !== "web" && (
+              <Button
+                size="lg"
+                variant="outline"
+                label="Continue with Google"
+                onPress={handleGoogleSignIn}
+                className="w-full"
+              />
+            )}
             <Button
               size="lg"
-              label="Sign In"
+              label="Sign in with email"
               onPress={handleSignIn}
               className="w-full dark:bg-primary-dark"
             />

@@ -14,6 +14,8 @@ import { Platform } from 'react-native';
 const ACCESS_TOKEN_KEY = 'workos_access_token';
 const REFRESH_TOKEN_KEY = 'workos_refresh_token';
 const USER_INFO_KEY = 'workos_user_info';
+const AUTH_PROVIDER_KEY = 'auth_provider';
+const APPLE_USER_ID_KEY = 'apple_user_id';
 const CHUNK_SIZE = 1800; // Below 2KB limit with key overhead
 
 // Helper to determine storage engine
@@ -95,6 +97,52 @@ export interface StoredUserInfo {
   emailVerified: boolean;
 }
 
+/** Which login provider issued the currently-active session token. */
+export type AuthProvider = 'workos' | 'apple' | 'google';
+
+async function getSmallValue(key: string): Promise<string | null> {
+  if (isWeb) return AsyncStorage.getItem(key);
+  return SecureStore.getItemAsync(key);
+}
+
+async function setSmallValue(key: string, value: string): Promise<void> {
+  if (isWeb) {
+    await AsyncStorage.setItem(key, value);
+  } else {
+    await SecureStore.setItemAsync(key, value);
+  }
+}
+
+async function deleteSmallValue(key: string): Promise<void> {
+  if (isWeb) {
+    await AsyncStorage.removeItem(key);
+  } else {
+    await SecureStore.deleteItemAsync(key);
+  }
+}
+
+export async function getAuthProvider(): Promise<AuthProvider> {
+  const v = await getSmallValue(AUTH_PROVIDER_KEY);
+  return v === 'apple' || v === 'google' ? v : 'workos';
+}
+
+export async function setAuthProvider(provider: AuthProvider): Promise<void> {
+  await setSmallValue(AUTH_PROVIDER_KEY, provider);
+}
+
+/**
+ * Apple's stable per-app user id. Persisted so we can call
+ * `getCredentialStateAsync` and silently re-authenticate (Apple identity tokens
+ * are short-lived and cannot be refreshed).
+ */
+export async function getAppleUserId(): Promise<string | null> {
+  return getSmallValue(APPLE_USER_ID_KEY);
+}
+
+export async function setAppleUserId(userId: string): Promise<void> {
+  await setSmallValue(APPLE_USER_ID_KEY, userId);
+}
+
 export async function getAccessToken(): Promise<string | null> {
   return getLargeValue(ACCESS_TOKEN_KEY);
 }
@@ -140,7 +188,9 @@ export async function setUserInfo(info: StoredUserInfo): Promise<void> {
 export async function clearAllTokens(): Promise<void> {
   await deleteLargeValue(ACCESS_TOKEN_KEY);
   await deleteLargeValue(REFRESH_TOKEN_KEY);
-  
+  await deleteSmallValue(AUTH_PROVIDER_KEY);
+  await deleteSmallValue(APPLE_USER_ID_KEY);
+
   if (isWeb) {
     await AsyncStorage.removeItem(USER_INFO_KEY);
   } else {

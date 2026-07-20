@@ -1,3 +1,16 @@
+// Reversed iOS Google OAuth client id, e.g.
+// "com.googleusercontent.apps.1234567890-abc123". Required by the
+// google-signin config plugin. If unset, the plugin is skipped so prebuild
+// still works (native Google sign-in just won't function until it's provided).
+const googleIosUrlScheme = process.env.EXPO_PUBLIC_GOOGLE_IOS_URL_SCHEME;
+
+if (!googleIosUrlScheme) {
+  console.warn(
+    "[app.config] EXPO_PUBLIC_GOOGLE_IOS_URL_SCHEME is not set — skipping " +
+      "@react-native-google-signin plugin. Set it in apps/native/.env to enable Google sign-in."
+  );
+}
+
 export default {
   expo: {
     name: "Nima",
@@ -15,6 +28,7 @@ export default {
     },
     ios: {
       supportsTablet: true,
+      usesAppleSignIn: true,
       bundleIdentifier: "ai.shopnima.app",
       "infoPlist": {
       "ITSAppUsesNonExemptEncryption": false,
@@ -63,6 +77,15 @@ export default {
       "expo-font",
       "expo-web-browser",
       "expo-secure-store",
+      "expo-apple-authentication",
+      ...(googleIosUrlScheme
+        ? [
+            [
+              "@react-native-google-signin/google-signin",
+              { iosUrlScheme: googleIosUrlScheme },
+            ],
+          ]
+        : []),
       [
         "@sentry/react-native/expo",
         {

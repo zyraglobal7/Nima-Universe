@@ -26,6 +26,7 @@ import { Id } from "@/convex/_generated/dataModel";
 import Toast from "react-native-toast-message";
 import { LinearGradient } from "expo-linear-gradient";
 import { useTheme } from "@/lib/contexts/ThemeContext";
+import { useResponsiveLayout } from "@/lib/hooks/useResponsiveLayout";
 
 const MAX_PHOTOS = 4;
 const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
@@ -56,11 +57,15 @@ const GRID_GAP = 14;
 export function PhotosTab() {
   const { isDark } = useTheme();
   const { width: windowWidth } = useWindowDimensions();
+  // On iPad show all photos in a single wider row (up to 4 columns); on phones
+  // keep the 2-column grid.
+  const { columns } = useResponsiveLayout(2, 4);
   // Numeric tile dimensions. We deliberately compute an explicit width AND
   // height (3:4 portrait) instead of using `aspectRatio` + a percentage width —
   // that combo collapses the tiles to a thin strip once they wrap onto a second
   // row in a flex-wrap container. A concrete pixel height lays out reliably.
-  const tileWidth = (windowWidth - SCREEN_PADDING - GRID_GAP) / 2;
+  const tileWidth =
+    (windowWidth - SCREEN_PADDING - GRID_GAP * (columns - 1)) / columns;
   const tileHeight = (tileWidth * 4) / 3;
   const [uploadingFiles, setUploadingFiles] = useState<UploadingFile[]>([]);
   const [settingPrimaryId, setSettingPrimaryId] =

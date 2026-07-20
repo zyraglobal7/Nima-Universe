@@ -6,6 +6,7 @@ import * as Crypto from 'expo-crypto';
 import Constants, { ExecutionEnvironment } from 'expo-constants';
 import { ConvexHttpClient } from 'convex/browser';
 import { api } from '@/convex/_generated/api';
+import * as AppleAuthentication from 'expo-apple-authentication';
 import {
   getAccessToken,
   setAccessToken,
@@ -16,7 +17,12 @@ import {
   clearAllTokens,
   setPKCEVerifier,
   clearPKCEVerifier,
+  getAuthProvider,
+  setAuthProvider,
+  getAppleUserId,
+  setAppleUserId,
   type StoredUserInfo,
+  type AuthProvider,
 } from './auth-storage';
 
 // Complete any pending auth sessions on app start
@@ -43,6 +49,31 @@ console.log('[AUTH] ⬆️  Make sure this Redirect URI is registered in your Wo
 
 const WORKOS_AUTH_URL = 'https://api.workos.com/user_management/authorize';
 const WORKOS_TOKEN_URL = 'https://api.workos.com/user_management/authenticate';
+
+// ---------- Native Google config ----------
+
+const GOOGLE_IOS_CLIENT_ID = process.env.EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID;
+const GOOGLE_WEB_CLIENT_ID = process.env.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID;
+
+let googleConfigured = false;
+
+/**
+ * Lazily load + configure the native Google Sign-In module. Loaded on demand so
+ * the web bundle never pulls in the native-only package.
+ */
+async function getGoogleSignin() {
+  const { GoogleSignin } = await import(
+    '@react-native-google-signin/google-signin'
+  );
+  if (!googleConfigured) {
+    GoogleSignin.configure({
+      iosClientId: GOOGLE_IOS_CLIENT_ID,
+      webClientId: GOOGLE_WEB_CLIENT_ID,
+    });
+    googleConfigured = true;
+  }
+  return GoogleSignin;
+}
 
 // ---------- PKCE Helpers ----------
 
@@ -111,6 +142,71 @@ async function refreshAccessToken(refreshToken: string): Promise<{
   } finally {
     refreshPromise = null;
   }
+}
+
+/**
+ * Provider-aware token refresh. Returns a fresh, valid session token for the
+ * active provider (also persisting it), or null if re-auth is required.
+ *
+ * - workos: exchange the stored refresh token for a new access token.
+ * - google: `signInSilently()` yields a fresh idToken with no UI.
+ * - apple:  identity tokens are short-lived and non-refreshable, so we silently
+ *           re-run `signInAsync` while the credential is still AUTHORIZED.
+ */
+async function refreshTokenForProvider(
+  provider: AuthProvider
+): Promise<string | null> {
+  try {
+    if (provider === 'workos') {
+      const storedRefreshToken = await getRefreshToken();
+      if (!storedRefreshToken) return null;
+      const refreshed = await refreshAccessToken(storedRefreshToken);
+      if (!refreshed) return null;
+      await setAccessToken(refreshed.accessToken);
+      await setRefreshToken(refreshed.refreshToken);
+      return refreshed.accessToken;
+    }
+
+    if (provider === 'google') {
+      const GoogleSignin = await getGoogleSignin();
+      const res: any = await GoogleSignin.signInSilently();
+      let idToken: string | undefined =
+        res?.data?.idToken ?? res?.idToken ?? undefined;
+      if (!idToken) {
+        const tokens: any = await GoogleSignin.getTokens();
+        idToken = tokens?.idToken;
+      }
+      if (!idToken) return null;
+      await setAccessToken(idToken);
+      return idToken;
+    }
+
+    if (provider === 'apple') {
+      const appleUserId = await getAppleUserId();
+      if (!appleUserId) return null;
+      const state = await AppleAuthentication.getCredentialStateAsync(
+        appleUserId
+      );
+      if (
+        state !==
+        AppleAuthentication.AppleAuthenticationCredentialState.AUTHORIZED
+      ) {
+        return null;
+      }
+      const cred = await AppleAuthentication.signInAsync({
+        requestedScopes: [
+          AppleAuthentication.AppleAuthenticationScope.FULL_NAME,
+          AppleAuthentication.AppleAuthenticationScope.EMAIL,
+        ],
+      });
+      if (!cred.identityToken) return null;
+      await setAccessToken(cred.identityToken);
+      return cred.identityToken;
+    }
+  } catch (error) {
+    console.error(`[AUTH] ${provider} token refresh failed:`, error);
+  }
+  return null;
 }
 
 // ---------- JWT Helpers ----------
@@ -188,25 +284,21 @@ export function useAuthFromWorkOS() {
         if (mounted && token && userInfo) {
           // Check if token is expired
           if (isTokenExpired(token)) {
-            const storedRefreshToken = await getRefreshToken();
-            if (storedRefreshToken) {
-              // Race the network refresh against a timeout so a slow/offline
-              // refresh can never hang `isLoading` forever (which would leave
-              // the user stuck on the launch loader with no redirect to "/").
-              const refreshed = await Promise.race([
-                refreshAccessToken(storedRefreshToken),
-                new Promise<null>((resolve) => setTimeout(() => resolve(null), 8000)),
-              ]);
-              if (refreshed) {
-                await setAccessToken(refreshed.accessToken);
-                await setRefreshToken(refreshed.refreshToken);
-                setState({
-                  isLoading: false,
-                  isAuthenticated: true,
-                  user: userInfo,
-                });
-                return;
-              }
+            const provider = await getAuthProvider();
+            // Race the provider refresh against a timeout so a slow/offline
+            // refresh can never hang `isLoading` forever (which would leave
+            // the user stuck on the launch loader with no redirect to "/").
+            const refreshed = await Promise.race([
+              refreshTokenForProvider(provider),
+              new Promise<null>((resolve) => setTimeout(() => resolve(null), 8000)),
+            ]);
+            if (refreshed) {
+              setState({
+                isLoading: false,
+                isAuthenticated: true,
+                user: userInfo,
+              });
+              return;
             }
             // Refresh failed — clear everything
             await clearAllTokens();
@@ -242,14 +334,10 @@ export function useAuthFromWorkOS() {
 
         // Force refresh if requested or token is expired
         if (forceRefreshToken || isTokenExpired(token)) {
-          const storedRefreshToken = await getRefreshToken();
-          if (!storedRefreshToken) return null;
-
-          const refreshed = await refreshAccessToken(storedRefreshToken);
+          const provider = await getAuthProvider();
+          const refreshed = await refreshTokenForProvider(provider);
           if (refreshed) {
-            await setAccessToken(refreshed.accessToken);
-            await setRefreshToken(refreshed.refreshToken);
-            return refreshed.accessToken;
+            return refreshed;
           }
 
           // Refresh failed — sign out
@@ -298,11 +386,18 @@ export function useAuthFromWorkOS() {
 /**
  * Launch the WorkOS AuthKit hosted login page.
  * Opens an in-app browser, and handles the OAuth PKCE flow.
- * 
+ *
  * @param mode - 'sign-in' or 'sign-up'
+ * @param provider - which WorkOS provider to send the user straight to.
+ *   'authkit' shows WorkOS's hosted page listing every connection;
+ *   'AppleOAuth' skips that page and opens Apple's own sign-in
+ *   (appleid.apple.com) directly — required for App Store guideline 4.8.
  * @returns The auth result with tokens and user info, or null if cancelled/failed
  */
-export async function launchWorkOSAuth(mode: 'sign-in' | 'sign-up' = 'sign-in'): Promise<{
+export async function launchWorkOSAuth(
+  mode: 'sign-in' | 'sign-up' = 'sign-in',
+  provider: 'authkit' | 'AppleOAuth' = 'authkit',
+): Promise<{
   accessToken: string;
   refreshToken: string;
   user: StoredUserInfo;
@@ -315,6 +410,7 @@ export async function launchWorkOSAuth(mode: 'sign-in' | 'sign-up' = 'sign-in'):
     // Build authorization URL
     console.log('[AUTH] ---- launchWorkOSAuth START ----');
     console.log('[AUTH] Mode:', mode);
+    console.log('[AUTH] Provider:', provider);
     console.log('[AUTH] Redirect URI:', REDIRECT_URI);
     console.log('[AUTH] Client ID:', WORKOS_CLIENT_ID);
 
@@ -324,7 +420,7 @@ export async function launchWorkOSAuth(mode: 'sign-in' | 'sign-up' = 'sign-in'):
       response_type: 'code',
       code_challenge: codeChallenge,
       code_challenge_method: 'S256',
-      provider: 'authkit',
+      provider,
       ...(mode === 'sign-up' ? { screen_hint: 'sign-up' } : {}),
     });
 
@@ -415,6 +511,7 @@ export async function launchWorkOSAuth(mode: 'sign-in' | 'sign-up' = 'sign-in'):
       setAccessToken(accessToken),
       setRefreshToken(refreshTokenValue),
       setUserInfo(userInfo),
+      setAuthProvider('workos'),
     ]);
 
     // Clean up persisted verifier after successful popup flow
@@ -436,6 +533,118 @@ export async function launchWorkOSAuth(mode: 'sign-in' | 'sign-up' = 'sign-in'):
     console.error('[AUTH] Error:', error);
     // Clean up verifier on error
     await clearPKCEVerifier();
+    return null;
+  }
+}
+
+/**
+ * Native Sign in with Apple (AuthenticationServices via expo-apple-authentication).
+ *
+ * The returned `identityToken` is a JWT that Convex validates directly (see
+ * `auth.config.ts` Apple provider). Apple only returns the user's name/email on
+ * the FIRST authorization, so we persist them for UserDataSync to upsert.
+ */
+export async function signInWithApple(): Promise<{
+  user: StoredUserInfo;
+} | null> {
+  try {
+    const cred = await AppleAuthentication.signInAsync({
+      requestedScopes: [
+        AppleAuthentication.AppleAuthenticationScope.FULL_NAME,
+        AppleAuthentication.AppleAuthenticationScope.EMAIL,
+      ],
+    });
+
+    if (!cred.identityToken) {
+      console.warn('[AUTH] Apple sign-in returned no identityToken');
+      return null;
+    }
+
+    // Preserve previously-stored profile bits (name/email only arrive once).
+    const existing = await getUserInfo();
+    const userInfo: StoredUserInfo = {
+      id: cred.user, // stable per-app Apple user id
+      email: cred.email || existing?.email || '',
+      firstName: cred.fullName?.givenName || existing?.firstName || undefined,
+      lastName: cred.fullName?.familyName || existing?.lastName || undefined,
+      profilePictureUrl: existing?.profilePictureUrl,
+      emailVerified: true,
+    };
+
+    await Promise.all([
+      setAccessToken(cred.identityToken),
+      setAuthProvider('apple'),
+      setAppleUserId(cred.user),
+      setUserInfo(userInfo),
+    ]);
+
+    callLogin(userInfo);
+    console.log('[AUTH] ---- Apple sign-in SUCCESS ----');
+    return { user: userInfo };
+  } catch (error: any) {
+    // User cancelled the native sheet → not an error.
+    if (error?.code === 'ERR_REQUEST_CANCELED') return null;
+    console.error('[AUTH] Apple sign-in failed:', error);
+    return null;
+  }
+}
+
+/**
+ * Native Continue with Google (@react-native-google-signin).
+ * Returns a Google idToken that Convex validates directly (see the Google
+ * provider in `auth.config.ts`).
+ */
+export async function signInWithGoogle(): Promise<{
+  user: StoredUserInfo;
+} | null> {
+  try {
+    const GoogleSignin = await getGoogleSignin();
+    await GoogleSignin.hasPlayServices?.({
+      showPlayServicesUpdateDialog: true,
+    });
+    const result: any = await GoogleSignin.signIn();
+
+    // Support both the modern `{ data }` shape and the legacy flat shape.
+    const info = result?.data ?? result;
+    let idToken: string | undefined = info?.idToken;
+    if (!idToken) {
+      const tokens: any = await GoogleSignin.getTokens();
+      idToken = tokens?.idToken;
+    }
+    if (!idToken) {
+      console.warn('[AUTH] Google sign-in returned no idToken');
+      return null;
+    }
+
+    const gUser = info?.user ?? {};
+    const userInfo: StoredUserInfo = {
+      id: gUser.id || '',
+      email: gUser.email || '',
+      firstName: gUser.givenName || undefined,
+      lastName: gUser.familyName || undefined,
+      profilePictureUrl: gUser.photo || undefined,
+      emailVerified: true,
+    };
+
+    await Promise.all([
+      setAccessToken(idToken),
+      setAuthProvider('google'),
+      setUserInfo(userInfo),
+    ]);
+
+    callLogin(userInfo);
+    console.log('[AUTH] ---- Google sign-in SUCCESS ----');
+    return { user: userInfo };
+  } catch (error: any) {
+    // Cancellation codes across library versions.
+    if (
+      error?.code === '-5' ||
+      error?.code === 'SIGN_IN_CANCELLED' ||
+      error?.code === '12501'
+    ) {
+      return null;
+    }
+    console.error('[AUTH] Google sign-in failed:', error);
     return null;
   }
 }

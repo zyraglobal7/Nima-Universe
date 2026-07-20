@@ -3,6 +3,7 @@ import { ApparelItemCard, type ApparelItem } from "./ApparelItemCard";
 import { Text } from "@/components/ui/Text";
 import { Shirt } from "lucide-react-native";
 import type { Id } from "@/convex/_generated/dataModel";
+import { useResponsiveLayout } from "@/lib/hooks/useResponsiveLayout";
 
 interface ApparelGridProps {
   items: ApparelItem[];
@@ -25,6 +26,8 @@ export function ApparelGrid({
   likedItemIds = new Set(),
   onToggleLike,
 }: ApparelGridProps) {
+  const { columns, horizontalPadding } = useResponsiveLayout(2, 3);
+
   if (isLoading) {
     return (
       <View className="flex-1 items-center justify-center py-16">
@@ -52,43 +55,38 @@ export function ApparelGrid({
     );
   }
 
-  // Build 2-column rows from the flat items array
-  const rows: Array<[ApparelItem, ApparelItem | undefined]> = [];
-  for (let i = 0; i < items.length; i += 2) {
-    rows.push([items[i], items[i + 1]]);
+  // Build N-column rows from the flat items array (N is responsive).
+  const rows: Array<Array<ApparelItem | undefined>> = [];
+  for (let i = 0; i < items.length; i += columns) {
+    const row: Array<ApparelItem | undefined> = [];
+    for (let c = 0; c < columns; c++) {
+      row.push(items[i + c]);
+    }
+    rows.push(row);
   }
 
   return (
-    <View className="px-4">
+    <View style={{ paddingHorizontal: horizontalPadding }}>
       {rows.map((row, rowIndex) => (
         <View
-          key={row[0]._id}
+          key={row[0]?._id ?? `row-${rowIndex}`}
           style={{ flexDirection: "row", gap: 16, marginBottom: 16 }}
         >
-          <View style={{ flex: 1 }}>
-            <ApparelItemCard
-              item={row[0]}
-              index={rowIndex * 2}
-              isSelectionMode={isSelectionMode}
-              isSelected={selectedItemIds.has(row[0]._id)}
-              onSelect={onItemSelect}
-              isLiked={likedItemIds.has(row[0]._id)}
-              onToggleLike={onToggleLike}
-            />
-          </View>
-          <View style={{ flex: 1 }}>
-            {row[1] ? (
-              <ApparelItemCard
-                item={row[1]}
-                index={rowIndex * 2 + 1}
-                isSelectionMode={isSelectionMode}
-                isSelected={selectedItemIds.has(row[1]._id)}
-                onSelect={onItemSelect}
-                isLiked={likedItemIds.has(row[1]._id)}
-                onToggleLike={onToggleLike}
-              />
-            ) : null}
-          </View>
+          {row.map((item, colIndex) => (
+            <View key={item?._id ?? `empty-${colIndex}`} style={{ flex: 1 }}>
+              {item ? (
+                <ApparelItemCard
+                  item={item}
+                  index={rowIndex * columns + colIndex}
+                  isSelectionMode={isSelectionMode}
+                  isSelected={selectedItemIds.has(item._id)}
+                  onSelect={onItemSelect}
+                  isLiked={likedItemIds.has(item._id)}
+                  onToggleLike={onToggleLike}
+                />
+              ) : null}
+            </View>
+          ))}
         </View>
       ))}
 

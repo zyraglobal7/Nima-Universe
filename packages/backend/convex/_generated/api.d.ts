@@ -39,6 +39,7 @@ import type * as itemTryOns_queries from "../itemTryOns/queries.js";
 import type * as items_likes from "../items/likes.js";
 import type * as items_mutations from "../items/mutations.js";
 import type * as items_queries from "../items/queries.js";
+import type * as lib_auth from "../lib/auth.js";
 import type * as lib_rateLimiter from "../lib/rateLimiter.js";
 import type * as lib_sanitize from "../lib/sanitize.js";
 import type * as lookInteractions_index from "../lookInteractions/index.js";
@@ -157,6 +158,7 @@ declare const fullApi: ApiFromModules<{
   "items/likes": typeof items_likes;
   "items/mutations": typeof items_mutations;
   "items/queries": typeof items_queries;
+  "lib/auth": typeof lib_auth;
   "lib/rateLimiter": typeof lib_rateLimiter;
   "lib/sanitize": typeof lib_sanitize;
   "lookInteractions/index": typeof lookInteractions_index;
