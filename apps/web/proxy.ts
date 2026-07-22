@@ -30,6 +30,8 @@ export default authkitMiddleware({
       // Legal pages
       '/termsAndConditions',
       '/privacyPolicy',
+      // Support (must be reachable from the native app without a session)
+      '/support',
       // Health check (if exposed)
       '/api/health',
       // Fingo Pay webhook (called by Fingo servers, not users)

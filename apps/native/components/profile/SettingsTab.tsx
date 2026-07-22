@@ -10,6 +10,7 @@ import {
   Lock,
   LogOut,
   ShoppingBag,
+  HelpCircle,
   type LucideIcon,
 } from "lucide-react-native";
 import { router } from "expo-router";
@@ -18,6 +19,7 @@ import { useQuery, useMutation, useAction } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import Constants from "expo-constants";
 import { CreditsModal } from "@/components/credits/CreditsModal";
+import * as WebBrowser from "expo-web-browser";
 
 const isExpoGo = Constants.executionEnvironment === "storeClient";
 
@@ -151,6 +153,13 @@ export function SettingsTab() {
               icon={Lock}
               title="Change Password"
               subtitle="Managed via Google Account"
+            />
+            <SettingsRow
+              isDark={isDark}
+              icon={HelpCircle}
+              title="Help"
+              subtitle="Visit our support center"
+              onPress={() => WebBrowser.openBrowserAsync("https://www.shopnima.ai/support")}
             />
             <SettingsRow
               isDark={isDark}
