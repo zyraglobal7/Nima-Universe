@@ -229,6 +229,60 @@ export const updateProfile = mutation({
 });
 
 /**
+ * Generate an upload URL for a new profile picture
+ */
+export const generateProfileImageUploadUrl = mutation({
+  args: {},
+  returns: v.string(),
+  handler: async (ctx: MutationCtx, _args: Record<string, never>): Promise<string> => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) {
+      throw new Error('Not authenticated');
+    }
+    return await ctx.storage.generateUploadUrl();
+  },
+});
+
+/**
+ * Set the current user's profile picture to a freshly uploaded image.
+ * Clears any external profileImageUrl (e.g. from Google/Apple/WorkOS) so the
+ * uploaded photo takes precedence, and deletes the previously uploaded photo
+ * (if any) to avoid orphaning storage files.
+ */
+export const updateProfileImage = mutation({
+  args: {
+    storageId: v.id('_storage'),
+  },
+  returns: v.null(),
+  handler: async (
+    ctx: MutationCtx,
+    args: { storageId: Id<'_storage'> }
+  ): Promise<null> => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) {
+      throw new Error('Not authenticated');
+    }
+
+    const user = await getUserFromIdentity(ctx);
+    if (!user) {
+      throw new Error('User not found');
+    }
+
+    if (user.profileImageId) {
+      await ctx.storage.delete(user.profileImageId);
+    }
+
+    await ctx.db.patch(user._id, {
+      profileImageId: args.storageId,
+      profileImageUrl: undefined,
+      updatedAt: Date.now(),
+    });
+
+    return null;
+  },
+});
+
+/**
  * Complete onboarding with all collected data
  * Called after user signs up and completes the onboarding wizard
  * 

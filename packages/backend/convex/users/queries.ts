@@ -168,13 +168,7 @@ export const getCurrentUser = query({
       return null;
     }
 
-    // The subject is the WorkOS user ID
-    const workosUserId = identity.subject;
-
-    const user = await ctx.db
-      .query('users')
-      .withIndex('by_workos_user_id', (q) => q.eq('workosUserId', workosUserId))
-      .unique();
+    const user = await getUserFromIdentity(ctx);
 
     if (!user) {
       return null;
@@ -661,20 +655,24 @@ export const getUserById = internalQuery({
 });
 
 /**
- * Internal: resolve a WorkOS user ID to our Convex user ID.
- * Used by the deleteMyAccount action before it can call the internal mutation.
+ * Internal: resolve the currently authenticated caller to our Convex user,
+ * via the shared multi-provider identity mapping (authIdentities table),
+ * not just workosUserId. Used by actions (which lack direct db access) that
+ * need to resolve "who is calling me" — e.g. deleteMyAccount,
+ * generateMyStyleProfile.
  */
-export const getUserIdByWorkosId = internalQuery({
-  args: { workosUserId: v.string() },
-  returns: v.union(v.id('users'), v.null()),
+export const getCurrentUserInternal = internalQuery({
+  args: {},
+  returns: v.union(
+    v.object({ _id: v.id('users'), workosUserId: v.optional(v.string()) }),
+    v.null()
+  ),
   handler: async (
     ctx: QueryCtx,
-    args: { workosUserId: string }
-  ): Promise<Id<'users'> | null> => {
-    const user = await ctx.db
-      .query('users')
-      .withIndex('by_workos_user_id', (q) => q.eq('workosUserId', args.workosUserId))
-      .unique();
-    return user?._id ?? null;
+    _args: Record<string, never>
+  ): Promise<{ _id: Id<'users'>; workosUserId?: string } | null> => {
+    const user = await getUserFromIdentity(ctx);
+    if (!user) return null;
+    return { _id: user._id, workosUserId: user.workosUserId };
   },
 });

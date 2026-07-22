@@ -17,13 +17,11 @@ export const generateMyStyleProfile = action({
     const identity = await ctx.auth.getUserIdentity();
     if (!identity) throw new Error('Not authenticated');
 
-    const userId = await ctx.runQuery(internal.users.queries.getUserIdByWorkosId, {
-      workosUserId: identity.subject,
-    });
-    if (!userId) throw new Error('User not found');
+    const user = await ctx.runQuery(internal.users.queries.getCurrentUserInternal, {});
+    if (!user) throw new Error('User not found');
 
     return await ctx.runAction(internal.workflows.actions.generateStyleProfile, {
-      userId,
+      userId: user._id,
     });
   },
 });
@@ -39,22 +37,20 @@ export const deleteMyAccount = action({
     const identity = await ctx.auth.getUserIdentity();
     if (!identity) throw new Error('Not authenticated');
 
-    const workosUserId = identity.subject;
-
     // Get userId from Convex so we can delete all their data
-    const userId = await ctx.runQuery(internal.users.queries.getUserIdByWorkosId, {
-      workosUserId,
-    });
-    if (!userId) throw new Error('User not found');
+    const user = await ctx.runQuery(internal.users.queries.getCurrentUserInternal, {});
+    if (!user) throw new Error('User not found');
 
     // Delete all Convex data first
-    await ctx.runMutation(internal.users.mutations.deleteUserData, { userId });
+    await ctx.runMutation(internal.users.mutations.deleteUserData, { userId: user._id });
 
-    // Delete from WorkOS (best-effort — data is already gone from our side)
+    // Delete from WorkOS (best-effort — data is already gone from our side).
+    // Only applicable for users who actually have a WorkOS account (native
+    // Apple/Google sign-ins have no WorkOS user to clean up).
     const apiKey = process.env.WORKOS_API_KEY;
-    if (apiKey) {
+    if (apiKey && user.workosUserId) {
       try {
-        const res = await fetch(`https://api.workos.com/user_management/users/${workosUserId}`, {
+        const res = await fetch(`https://api.workos.com/user_management/users/${user.workosUserId}`, {
           method: 'DELETE',
           headers: { Authorization: `Bearer ${apiKey}` },
         });

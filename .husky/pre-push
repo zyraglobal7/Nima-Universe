@@ -1,0 +1,1 @@
+npm run test --workspace=apps/native -- --ci --forceExit

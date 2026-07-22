@@ -44,6 +44,42 @@ async function generateContentWithFallback(
   }
 }
 
+/**
+ * Maps a raw error (often a verbose Gemini/OpenAI SDK error containing JSON,
+ * status codes, and internal URLs) to a short, user-safe message. The raw
+ * error is always logged separately via console.error for debugging.
+ */
+function toFriendlyErrorMessage(error: unknown): string {
+  const raw = error instanceof Error ? error.message : String(error);
+  const lower = raw.toLowerCase();
+
+  if (
+    lower.includes('resource_exhausted') ||
+    lower.includes('quota') ||
+    lower.includes('429')
+  ) {
+    return "We're experiencing high demand right now. Please try again in a few minutes.";
+  }
+  if (
+    lower.includes('503') ||
+    lower.includes('unavailable') ||
+    lower.includes('high demand')
+  ) {
+    return 'Our styling service is temporarily busy. Please try again shortly.';
+  }
+  if (lower.includes('safety') || lower.includes('blocked')) {
+    return "This photo couldn't be processed. Please try a different photo.";
+  }
+  if (
+    lower.includes('network') ||
+    lower.includes('timeout') ||
+    lower.includes('fetch failed')
+  ) {
+    return 'Connection issue. Please check your network and try again.';
+  }
+  return 'Something went wrong while generating your image. Please try again.';
+}
+
 // ============================================
 // TYPES
 // ============================================
@@ -949,8 +985,8 @@ Keep the person's identity, face, and body type EXACTLY as shown in the referenc
         lookImageId,
       };
     } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-      console.error(`[WORKFLOW:ONBOARDING] Image generation failed:`, errorMessage);
+      console.error(`[WORKFLOW:ONBOARDING] Image generation failed:`, error);
+      const errorMessage = toFriendlyErrorMessage(error);
 
       // Update look status to failed
       await ctx.runMutation(internal.workflows.mutations.updateLookGenerationStatus, {
@@ -1197,8 +1233,8 @@ Show ONLY this single item prominently.`,
         storageId,
       };
     } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-      console.error(`[WORKFLOW:ITEM_TRYON] Image generation failed:`, errorMessage);
+      console.error(`[WORKFLOW:ITEM_TRYON] Image generation failed:`, error);
+      const errorMessage = toFriendlyErrorMessage(error);
 
       // Update try-on status to failed
       await ctx.runMutation(internal.itemTryOns.mutations.updateItemTryOnStatus, {
@@ -1313,8 +1349,8 @@ export const generateQuickTryOnImage = internalAction({
       console.log(`[QUICK_TRYON] Generation complete`);
       return { success: true, storageId };
     } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-      console.error(`[QUICK_TRYON] Failed:`, errorMessage);
+      console.error(`[QUICK_TRYON] Failed:`, error);
+      const errorMessage = toFriendlyErrorMessage(error);
 
       await ctx.runMutation(internal.quickTryOns.mutations.updateQuickTryOnStatus, {
         quickTryOnId: args.quickTryOnId,
@@ -1433,8 +1469,8 @@ export const generateSellerTryOnImage = internalAction({
       console.log(`[SELLER_TRYON] Generation complete`);
       return { success: true, storageId };
     } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-      console.error(`[SELLER_TRYON] Failed:`, errorMessage);
+      console.error(`[SELLER_TRYON] Failed:`, error);
+      const errorMessage = toFriendlyErrorMessage(error);
 
       await ctx.runMutation(internal.sellerTryOns.mutations.updateSellerTryOnStatus, {
         sellerTryOnId: args.sellerTryOnId,

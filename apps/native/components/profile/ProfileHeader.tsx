@@ -1,22 +1,107 @@
-import React, { useState } from "react";
-import { View, Text, TouchableOpacity } from "react-native";
+import React, { useState, useCallback } from "react";
+import { View, Text, TouchableOpacity, Alert, ActivityIndicator } from "react-native";
 import { Image } from "expo-image";
 import { Camera, User, Zap } from "lucide-react-native";
-import { useQuery } from "convex/react";
+import * as ImagePicker from "expo-image-picker";
+import { useQuery, useMutation } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import { useCredits } from "@/lib/hooks/useCredits";
 import { CreditsModal } from "@/components/credits/CreditsModal";
 import { useTheme } from "@/lib/contexts/ThemeContext";
+import Toast from "react-native-toast-message";
 
-interface ProfileHeaderProps {
-  onEdit: () => void;
-}
+const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
+const ALLOWED_TYPES = ["image/jpeg", "image/jpg", "image/png"];
 
-export function ProfileHeader({ onEdit }: ProfileHeaderProps) {
+export function ProfileHeader() {
   const currentUser = useQuery(api.users.queries.getCurrentUser);
   const { total, freeRemaining, freePerWeek, isLow } = useCredits();
   const [showCreditsModal, setShowCreditsModal] = useState(false);
+  const [isUploading, setIsUploading] = useState(false);
   const { isDark } = useTheme();
+
+  const generateUploadUrl = useMutation(
+    api.users.mutations.generateProfileImageUploadUrl,
+  );
+  const updateProfileImage = useMutation(api.users.mutations.updateProfileImage);
+
+  const uploadPhoto = useCallback(
+    async (asset: ImagePicker.ImagePickerAsset) => {
+      const type = asset.mimeType || "image/jpeg";
+      if (!ALLOWED_TYPES.includes(type)) {
+        Toast.show({ type: "error", text1: "Only JPG and PNG images are allowed" });
+        return;
+      }
+      if ((asset.fileSize || 0) > MAX_FILE_SIZE) {
+        Toast.show({ type: "error", text1: "Image exceeds the 10MB limit" });
+        return;
+      }
+
+      setIsUploading(true);
+      try {
+        const uploadUrl = await generateUploadUrl();
+        const response = await fetch(asset.uri);
+        const blob = await response.blob();
+
+        const result = await fetch(uploadUrl, {
+          method: "POST",
+          headers: { "Content-Type": type },
+          body: blob,
+        });
+        if (!result.ok) throw new Error("Upload failed");
+        const { storageId } = await result.json();
+
+        await updateProfileImage({ storageId });
+        Toast.show({ type: "success", text1: "Profile photo updated" });
+      } catch (error) {
+        console.error("[ProfileHeader] photo upload error:", error);
+        Toast.show({ type: "error", text1: "Failed to update photo. Please try again." });
+      } finally {
+        setIsUploading(false);
+      }
+    },
+    [generateUploadUrl, updateProfileImage],
+  );
+
+  const pickFromLibrary = useCallback(async () => {
+    const perm = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if (!perm.granted) {
+      Alert.alert("Permission needed", "Please allow photo library access in your device settings.");
+      return;
+    }
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ["images"],
+      allowsEditing: true,
+      aspect: [1, 1],
+      quality: 0.85,
+    });
+    if (result.canceled || !result.assets[0]) return;
+    await uploadPhoto(result.assets[0]);
+  }, [uploadPhoto]);
+
+  const takePhoto = useCallback(async () => {
+    const perm = await ImagePicker.requestCameraPermissionsAsync();
+    if (!perm.granted) {
+      Alert.alert("Permission needed", "Please allow camera access in your device settings.");
+      return;
+    }
+    const result = await ImagePicker.launchCameraAsync({
+      mediaTypes: ["images"],
+      allowsEditing: true,
+      aspect: [1, 1],
+      quality: 0.85,
+    });
+    if (result.canceled || !result.assets[0]) return;
+    await uploadPhoto(result.assets[0]);
+  }, [uploadPhoto]);
+
+  const handleChangePhoto = useCallback(() => {
+    Alert.alert("Change Profile Photo", undefined, [
+      { text: "Take Photo", onPress: takePhoto },
+      { text: "Choose from Library", onPress: pickFromLibrary },
+      { text: "Cancel", style: "cancel" },
+    ]);
+  }, [takePhoto, pickFromLibrary]);
 
   if (!currentUser) return null;
 
@@ -36,10 +121,15 @@ export function ProfileHeader({ onEdit }: ProfileHeaderProps) {
             )}
           </View>
           <TouchableOpacity
-            onPress={onEdit}
+            onPress={handleChangePhoto}
+            disabled={isUploading}
             className="absolute bottom-0 right-0 w-7 h-7 bg-background dark:bg-surface-dark border border-border dark:border-border-dark rounded-full items-center justify-center shadow-sm"
           >
-            <Camera size={14} color={isDark ? "#C4B8A8" : "#6B7280"} />
+            {isUploading ? (
+              <ActivityIndicator size="small" color={isDark ? "#C4B8A8" : "#6B7280"} />
+            ) : (
+              <Camera size={14} color={isDark ? "#C4B8A8" : "#6B7280"} />
+            )}
           </TouchableOpacity>
         </View>
 

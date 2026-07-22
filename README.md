@@ -46,6 +46,10 @@ Run `dev:backend` in its own terminal; apps read types from `packages/backend/co
 npm run deploy:backend
 ```
 
+## Testing
+
+`apps/native` has a Jest + React Native Testing Library suite (`npm run test --workspace=apps/native`). A Husky `pre-push` hook runs it automatically and blocks `git push` if any test fails — it's wired up by the root `prepare` script, so a plain `npm install` after cloning is enough to activate it.
+
 ## Notes
 
 - `packages/backend/convex/_generated/` is gitignored. Fresh clones must run `npm run dev:backend` once before `dev:web` or `dev:native` will typecheck.

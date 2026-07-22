@@ -68,12 +68,22 @@ async function runLookGenerationWorkflow(
   // ========================================
   // STEP 0: Generate Detailed Style Profile
   // ========================================
+  // Non-fatal: this is an enrichment input for Step 1's prompt, not a
+  // required one — selectItemsForLooks already handles a missing profile.
+  // An AI outage/quota error here must not take down the whole pipeline.
   console.log(`[WORKFLOW:${workflowName}] Step 0: Generating detailed style profile...`);
-  await ctx.runAction(
-    internal.workflows.actions.generateStyleProfile,
-    { userId },
-    { retry: true }
-  );
+  try {
+    await ctx.runAction(
+      internal.workflows.actions.generateStyleProfile,
+      { userId },
+      { retry: true }
+    );
+  } catch (error) {
+    console.error(
+      `[WORKFLOW:${workflowName}] Step 0 failed — continuing without a detailed style profile:`,
+      error
+    );
+  }
 
   // ========================================
   // STEP 1: Curate Personalized Looks

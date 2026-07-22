@@ -146,16 +146,21 @@ async function refreshAccessToken(refreshToken: string): Promise<{
 
 /**
  * Provider-aware token refresh. Returns a fresh, valid session token for the
- * active provider (also persisting it), or null if re-auth is required.
+ * active provider (also persisting it), null if re-auth is required, or
+ * 'cancelled' if the Apple system prompt was dismissed — a transient UI event,
+ * not a real auth failure, so callers should keep the existing session.
  *
  * - workos: exchange the stored refresh token for a new access token.
  * - google: `signInSilently()` yields a fresh idToken with no UI.
  * - apple:  identity tokens are short-lived and non-refreshable, so we silently
- *           re-run `signInAsync` while the credential is still AUTHORIZED.
+ *           re-run `signInAsync` while the credential is still AUTHORIZED. This
+ *           can surface Apple's system sheet in the background (e.g. on token
+ *           expiry checks triggered by app foreground/reconnect); dismissing it
+ *           throws ERR_REQUEST_CANCELED and must not be treated as a logout.
  */
 async function refreshTokenForProvider(
   provider: AuthProvider
-): Promise<string | null> {
+): Promise<string | null | 'cancelled'> {
   try {
     if (provider === 'workos') {
       const storedRefreshToken = await getRefreshToken();
@@ -193,15 +198,25 @@ async function refreshTokenForProvider(
       ) {
         return null;
       }
-      const cred = await AppleAuthentication.signInAsync({
-        requestedScopes: [
-          AppleAuthentication.AppleAuthenticationScope.FULL_NAME,
-          AppleAuthentication.AppleAuthenticationScope.EMAIL,
-        ],
-      });
-      if (!cred.identityToken) return null;
-      await setAccessToken(cred.identityToken);
-      return cred.identityToken;
+      try {
+        const cred = await AppleAuthentication.signInAsync({
+          requestedScopes: [
+            AppleAuthentication.AppleAuthenticationScope.FULL_NAME,
+            AppleAuthentication.AppleAuthenticationScope.EMAIL,
+          ],
+        });
+        if (!cred.identityToken) return null;
+        await setAccessToken(cred.identityToken);
+        return cred.identityToken;
+      } catch (error: any) {
+        // Prompt dismissed (backgrounding, timeout, tap-outside) — not a real
+        // auth failure. Let the caller keep the existing session and retry later.
+        if (error?.code === 'ERR_REQUEST_CANCELED') {
+          console.warn('[AUTH] apple token refresh prompt dismissed, keeping existing session');
+          return 'cancelled';
+        }
+        throw error;
+      }
     }
   } catch (error) {
     console.error(`[AUTH] ${provider} token refresh failed:`, error);
@@ -293,6 +308,8 @@ export function useAuthFromWorkOS() {
               new Promise<null>((resolve) => setTimeout(() => resolve(null), 8000)),
             ]);
             if (refreshed) {
+              // 'cancelled' means the Apple prompt was dismissed, not that
+              // re-auth is required — keep the existing session either way.
               setState({
                 isLoading: false,
                 isAuthenticated: true,
@@ -336,6 +353,12 @@ export function useAuthFromWorkOS() {
         if (forceRefreshToken || isTokenExpired(token)) {
           const provider = await getAuthProvider();
           const refreshed = await refreshTokenForProvider(provider);
+          if (refreshed === 'cancelled') {
+            // Apple prompt was dismissed, not a real auth failure — keep the
+            // session and hand back the still-stored (possibly stale) token
+            // rather than logging the user out.
+            return token;
+          }
           if (refreshed) {
             return refreshed;
           }

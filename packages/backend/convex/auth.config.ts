@@ -5,12 +5,10 @@ const clientId = process.env.WORKOS_CLIENT_ID;
 // Native Sign in with Apple: `aud` of the identityToken is the iOS bundle id.
 const appleBundleId = process.env.APPLE_BUNDLE_ID; // e.g. "ai.shopnima.app"
 
-// Native Google is not yet configured in production. Convex statically
-// requires every `process.env.*` referenced in this file to be set at deploy
-// time, so we intentionally do NOT reference GOOGLE_CLIENT_ID here yet.
-// To enable native Google sign-in: set GOOGLE_CLIENT_ID on the deployment,
-// then restore the guarded provider block below.
-//   const googleClientId = process.env.GOOGLE_CLIENT_ID;
+// Native Google Sign-In: @react-native-google-signin issues idTokens audienced
+// to the WEB client ID (configured as `webClientId` in lib/auth.ts's
+// GoogleSignin.configure()) on both iOS and Android, not the iOS client ID.
+const googleClientId = process.env.GOOGLE_CLIENT_ID;
 
 // Each provider is only registered when its required env var is present.
 // Convex rejects a deploy if a customJwt provider's `applicationID` is
@@ -49,15 +47,15 @@ if (appleBundleId) {
   });
 }
 
-// ── Native Google (disabled until GOOGLE_CLIENT_ID is set) ──
-// if (googleClientId) {
-//   providers.push({
-//     type: 'customJwt',
-//     issuer: 'https://accounts.google.com',
-//     algorithm: 'RS256',
-//     jwks: 'https://www.googleapis.com/oauth2/v3/certs',
-//     applicationID: googleClientId,
-//   });
-// }
+if (googleClientId) {
+  // ── Native Google ──
+  providers.push({
+    type: 'customJwt',
+    issuer: 'https://accounts.google.com',
+    algorithm: 'RS256',
+    jwks: 'https://www.googleapis.com/oauth2/v3/certs',
+    applicationID: googleClientId,
+  });
+}
 
 export default { providers } satisfies AuthConfig;

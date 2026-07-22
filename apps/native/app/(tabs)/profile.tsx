@@ -42,7 +42,7 @@ export default function ProfileScreen() {
   return (
     <SafeAreaView className="flex-1 bg-background dark:bg-background-dark">
       <View className="flex-1 px-4 pt-4">
-        <ProfileHeader onEdit={() => goToPage(3)} />
+        <ProfileHeader />
 
         <View
           className="flex-row bg-surface dark:bg-surface-dark rounded-2xl mb-6"

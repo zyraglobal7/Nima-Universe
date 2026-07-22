@@ -63,8 +63,14 @@ export const unstable_settings = {
 // Keep splash screen visible while fonts load
 SplashScreen.preventAutoHideAsync();
 
-// Create Convex client (single instance)
-const convex = new ConvexReactClient(process.env.EXPO_PUBLIC_CONVEX_URL!);
+// Create Convex client (single instance).
+// `initialAuthTokenReuse` skips Convex's default unconditional re-fetch of a
+// fresh token right after the initial sign-in confirms — for Apple, that
+// re-fetch has no silent path and re-triggers the interactive `signInAsync`
+// sheet a second time, right on the heels of the first.
+const convex = new ConvexReactClient(process.env.EXPO_PUBLIC_CONVEX_URL!, {
+  initialAuthTokenReuse: true,
+});
 
 // Routes that are accessible without authentication
 const PUBLIC_PATHS = ["/", "/onboarding", "/callback"];

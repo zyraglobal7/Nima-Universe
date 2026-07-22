@@ -22,7 +22,10 @@
       "env": {
         "EXPO_PUBLIC_CONVEX_URL": "https://rare-guineapig-47.convex.cloud",
         "EXPO_PUBLIC_WORKOS_CLIENT_ID": "client_01KC4723R44SCV8DCXT4EVV42Z",
-        "EXPO_PUBLIC_WORKOS_REDIRECT_URI": "shopnima://callback"
+        "EXPO_PUBLIC_WORKOS_REDIRECT_URI": "shopnima://callback",
+        "EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID": "917185293474-4bqj5vr3it2n94npd03tarq0v1irqav5.apps.googleusercontent.com",
+        "EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID": "917185293474-679910e6m1ienn8ibr8eq2v1opng5hu5.apps.googleusercontent.com",
+        "EXPO_PUBLIC_GOOGLE_IOS_URL_SCHEME": "com.googleusercontent.apps.917185293474-4bqj5vr3it2n94npd03tarq0v1irqav5"
       }
     },
     "preview": {

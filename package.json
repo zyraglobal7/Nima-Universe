@@ -11,14 +11,21 @@
     "dev:web": "npm run dev --workspace=apps/web",
     "dev:native": "npm run start --workspace=apps/native",
     "dev:backend": "npm run dev --workspace=packages/backend",
-    "deploy:backend": "npm run deploy --workspace=packages/backend"
+    "deploy:backend": "npm run deploy --workspace=packages/backend",
+    "prepare": "husky"
   },
   "overrides": {
     "@types/react": "~19.1.0",
     "@types/react-dom": "~19.1.0",
-    "zod": "^4.1.13"
+    "zod": "^4.1.13",
+    "nima-native": {
+      "react": "19.1.0"
+    }
   },
   "dependencies": {
     "convex": "^1.42.3"
+  },
+  "devDependencies": {
+    "husky": "^9.1.7"
   }
 }
