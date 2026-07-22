@@ -1,5 +1,5 @@
 import React, { useState, useCallback } from "react";
-import { View, Text, TouchableOpacity, Alert, ActivityIndicator } from "react-native";
+import { View, Text, TouchableOpacity, Alert, ActivityIndicator, Platform } from "react-native";
 import { Image } from "expo-image";
 import { Camera, User, Zap } from "lucide-react-native";
 import * as ImagePicker from "expo-image-picker";
@@ -152,33 +152,35 @@ export function ProfileHeader() {
               </Text>
             </View> */}
             {/* Credits Badge */}
-            <TouchableOpacity
-              onPress={() => setShowCreditsModal(true)}
-              className="flex-row items-center gap-1 px-3 py-1 rounded-full"
-              style={{
-                backgroundColor: isLow
-                  ? (isDark ? "#3B1C1C" : "#FEF2F2")
-                  : (isDark ? "#1C3B2A" : "#F0FDF4"),
-                borderWidth: 1,
-                borderColor: isLow
-                  ? (isDark ? "#7F1D1D" : "#FECACA")
-                  : (isDark ? "#14532D" : "#BBF7D0"),
-              }}
-            >
-              <Zap size={12} color={isLow ? "#EF4444" : "#22C55E"} />
-              <Text
-                className="text-xs font-semibold"
-                style={{ color: isLow ? "#EF4444" : "#22C55E" }}
+            {Platform.OS !== "ios" && (
+              <TouchableOpacity
+                onPress={() => setShowCreditsModal(true)}
+                className="flex-row items-center gap-1 px-3 py-1 rounded-full"
+                style={{
+                  backgroundColor: isLow
+                    ? (isDark ? "#3B1C1C" : "#FEF2F2")
+                    : (isDark ? "#1C3B2A" : "#F0FDF4"),
+                  borderWidth: 1,
+                  borderColor: isLow
+                    ? (isDark ? "#7F1D1D" : "#FECACA")
+                    : (isDark ? "#14532D" : "#BBF7D0"),
+                }}
               >
-                {total}
-              </Text>
-              <Text
-                className="text-[10px]"
-                style={{ color: isLow ? "#F87171" : "#4ADE80" }}
-              >
-                credits
-              </Text>
-            </TouchableOpacity>
+                <Zap size={12} color={isLow ? "#EF4444" : "#22C55E"} />
+                <Text
+                  className="text-xs font-semibold"
+                  style={{ color: isLow ? "#EF4444" : "#22C55E" }}
+                >
+                  {total}
+                </Text>
+                <Text
+                  className="text-[10px]"
+                  style={{ color: isLow ? "#F87171" : "#4ADE80" }}
+                >
+                  credits
+                </Text>
+              </TouchableOpacity>
+            )}
           </View>
         </View>
       </View>
