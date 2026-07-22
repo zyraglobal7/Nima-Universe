@@ -12,7 +12,7 @@
     "dev:native": "npm run start --workspace=apps/native",
     "dev:backend": "npm run dev --workspace=packages/backend",
     "deploy:backend": "npm run deploy --workspace=packages/backend",
-    "prepare": "husky"
+    "prepare": "husky || true"
   },
   "overrides": {
     "@types/react": "~19.1.0",
